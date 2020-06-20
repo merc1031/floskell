@@ -374,7 +374,7 @@ listAutoWrap _ open close _ [] = do
     write close
 
 listAutoWrap ctx open close sep xs =
-    aligned . groupH ctx open close $ listAutoWrap' ctx sep xs
+    aligned . group ctx open close $ listAutoWrap' ctx sep xs
 
 listAutoWrap' :: (Annotated ast, Pretty ast)
               => LayoutContext
