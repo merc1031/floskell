@@ -1177,8 +1177,7 @@ instance Pretty Deriving where
 #if MIN_VERSION_haskell_src_exts(1,20,0)
     prettyPrint (Deriving _ mderivstrategy instrules) =
         withIndentBy cfgIndentDeriving $ do
-            write "deriving "
-            prettyStratBefore
+            withOperatorFormatting Other "deriving" (write "deriving" >> prettyStratBefore) id
             case instrules of
                 [ i@IRule{} ] -> pretty i
                 [ IParen _ i ] -> listAutoWrap Other "(" ")" "," [ i ]
@@ -1189,7 +1188,7 @@ instance Pretty Deriving where
 #if MIN_VERSION_haskell_src_exts(1,21,0)
             Just x@DerivVia{} -> (return (), space *> pretty x)
 #endif
-            Just x -> (pretty x <* space, return ())
+            Just x -> (space *> pretty x <* space, return ())
             _ -> (return (), return ())
 #else
     prettyPrint (Deriving _ instrules) = withIndentBy cfgIndentDeriving $ do
