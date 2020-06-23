@@ -14,6 +14,7 @@ module Floskell.Types
     , psLine
     , psColumn
     , psNewline
+    , within
     , initialPrintState
     , Config(..)
     , SrcSpan(..)
@@ -30,14 +31,14 @@ import           Control.Monad
 import           Control.Monad.Search
                  ( MonadSearch, Search, runSearchBest )
 import           Control.Monad.State.Strict
-                 ( MonadState(..), StateT, execStateT, runStateT )
+                 ( MonadState(..), StateT, execStateT, gets, modify', runStateT )
 
 import qualified Data.Map.Strict              as Map
 import           Data.Semigroup               as Sem
 
 import           Floskell.Buffer              ( Buffer )
 import qualified Floskell.Buffer              as Buffer
-import           Floskell.Config              ( Config(..), Location(..) )
+import           Floskell.Config              ( Config(..), Location(..), WithinDeclaration(OtherDeclaration) )
 
 import           Language.Haskell.Exts.SrcLoc ( SrcSpan(..), mkSrcSpan, noLoc )
 import           Language.Haskell.Exts.Syntax ( Annotated(..) )
@@ -86,6 +87,7 @@ data PrintState =
                , psEolComment :: !Bool -- ^ An end of line comment has just been outputted.
                , psOutputRestriction :: !OutputRestriction
                , psTypeLayout :: !TypeLayout
+               , psWithinDeclaration :: !WithinDeclaration
                }
 
 psLine :: PrintState -> Int
@@ -99,7 +101,15 @@ psNewline = (== 0) . Buffer.column . psBuffer
 
 initialPrintState :: Config -> PrintState
 initialPrintState config =
-    PrintState Buffer.empty 0 0 Map.empty config False Anything TypeFree
+    PrintState Buffer.empty 0 0 Map.empty config False Anything TypeFree OtherDeclaration
+
+within :: WithinDeclaration -> Printer a -> Printer a
+within w f = do
+  oldWithin <- gets psWithinDeclaration
+  modify' $ \s -> s { psWithinDeclaration = w }
+  r <- f
+  modify' $ \s -> s { psWithinDeclaration = oldWithin }
+  pure r
 
 data CommentType = InlineComment | LineComment | PreprocessorDirective
     deriving ( Show )

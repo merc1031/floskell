@@ -5,10 +5,12 @@
 module Floskell.Config
     ( Indent(..)
     , LayoutContext(..)
+    , WithinDeclaration(..)
     , Location(..)
     , WsLoc(..)
     , Whitespace(..)
     , Layout(..)
+    , WithinLayout(..)
     , ConfigMapKey(..)
     , ConfigMap(..)
     , PenaltyConfig(..)
@@ -28,9 +30,12 @@ module Floskell.Config
     , cfgMapFind
     , cfgOpWs
     , cfgGroupWs
+    , cfgOpWs'
+    , cfgGroupWs'
     , inWs
     , wsSpace
     , wsLinebreak
+    , textToKey
     ) where
 
 import           Data.Aeson
@@ -56,6 +61,9 @@ data Indent = Align | IndentBy !Int | AlignOrIndentBy !Int
 data LayoutContext = Declaration | Type | Pattern | Expression | Other
     deriving ( Eq, Ord, Bounded, Enum, Show, Generic )
 
+data WithinDeclaration = ModuleDeclaration | RecordDeclaration | TypeDeclaration | OtherDeclaration
+    deriving ( Eq, Ord, Bounded, Enum, Show, Generic )
+
 data Location = Before | After
     deriving ( Eq, Ord, Bounded, Enum, Show, Generic )
 
@@ -71,7 +79,7 @@ data Whitespace = Whitespace { wsSpaces         :: !WsLoc
 data Layout = Flex | Vertical | TryOneline
     deriving ( Eq, Ord, Bounded, Enum, Show, Generic )
 
-data ConfigMapKey = ConfigMapKey !(Maybe ByteString) !(Maybe LayoutContext)
+data ConfigMapKey = ConfigMapKey !(Maybe ByteString) !(Maybe LayoutContext) !(Maybe WithinDeclaration)
     deriving ( Eq, Ord, Show )
 
 data ConfigMap a =
@@ -158,6 +166,14 @@ instance Default IndentConfig where
                        , cfgIndentWhereBinds = IndentBy 2
                        }
 
+data WithinLayout
+  = WithinLayout { wlModuleLayout :: !Layout
+                 , wlRecordLayout :: !Layout
+                 , wlTypeLayout :: !Layout
+                 , wlOtherLayout :: !Layout
+                 }
+    deriving ( Generic )
+
 data LayoutConfig =
     LayoutConfig { cfgLayoutApp :: !Layout
                  , cfgLayoutConDecls :: !Layout
@@ -169,7 +185,7 @@ data LayoutConfig =
                  , cfgLayoutLet :: !Layout
                  , cfgLayoutListComp :: !Layout
                  , cfgLayoutRecord :: !Layout
-                 , cfgLayoutType :: !Layout
+                 , cfgLayoutType :: !WithinLayout
                  }
     deriving ( Generic )
 
@@ -184,7 +200,7 @@ instance Default LayoutConfig where
                        , cfgLayoutLet = Flex
                        , cfgLayoutListComp = Flex
                        , cfgLayoutRecord = Flex
-                       , cfgLayoutType = Flex
+                       , cfgLayoutType = WithinLayout Flex Flex Flex Flex
                        }
 
 newtype OpConfig = OpConfig { unOpConfig :: ConfigMap Whitespace }
@@ -274,17 +290,17 @@ defaultConfig =
         }
   where
     opWsOverrides =
-        [ (ConfigMapKey (Just ",") Nothing, Whitespace WsAfter WsBefore False)
-        , ( ConfigMapKey (Just "record") Nothing
+        [ (ConfigMapKey (Just ",") Nothing Nothing, Whitespace WsAfter WsBefore False)
+        , ( ConfigMapKey (Just "record") Nothing Nothing
           , Whitespace WsAfter WsAfter False
           )
-        , ( ConfigMapKey (Just ".") (Just Type)
+        , ( ConfigMapKey (Just ".") (Just Type) Nothing
           , Whitespace WsAfter WsAfter False
           )
         ]
 
     groupWsOverrides =
-        [ (ConfigMapKey (Just "[") (Just Type), Whitespace WsBoth WsNone False)
+        [ (ConfigMapKey (Just "[") (Just Type) Nothing, Whitespace WsBoth WsNone False)
         ]
 
 safeConfig :: Config -> Config
@@ -292,43 +308,58 @@ safeConfig cfg = cfg { cfgGroup = group, cfgOp = op }
   where
     group = GroupConfig $
         updateOverrides (unGroupConfig $ cfgGroup cfg)
-                        [ ("(#", Expression, WsBoth), ("(#", Pattern, WsBoth) ]
+                        [ ("(#", Expression, WsBoth, Nothing), ("(#", Pattern, WsBoth, Nothing) ]
 
     op = OpConfig $
-        updateOverrides (unOpConfig $ cfgOp cfg)
-                        [ (".", Expression, WsBoth), ("@", Pattern, WsNone) ]
+        updateOverrides (unOpConfig $ cfgOp cfg) [ (".", Expression, WsBoth, Nothing), ("@", Pattern, WsNone, Nothing)  ]
 
     updateOverrides config overrides =
         config { cfgMapOverrides =
                      foldl (updateWs config) (cfgMapOverrides config) overrides
                }
 
-    updateWs config m (key, ctx, ws) =
+    updateWs config m (key, ctx, ws, within) =
         Map.insertWith (flip const)
-                       (ConfigMapKey (Just key) (Just ctx))
+                       (ConfigMapKey (Just key) (Just ctx) within)
                        (cfgMapFind ctx key config) { wsSpaces = ws }
                        m
 
-cfgMapFind :: LayoutContext -> ByteString -> ConfigMap a -> a
-cfgMapFind ctx key ConfigMap{..} =
+cfgMapFind' :: LayoutContext -> Maybe WithinDeclaration -> ByteString -> ConfigMap a -> a
+cfgMapFind' ctx within key ConfigMap{..} =
     let value = cfgMapDefault
+        -- Find default for context
         value' = Map.findWithDefault value
-                                     (ConfigMapKey Nothing (Just ctx))
+                                     (ConfigMapKey Nothing (Just ctx) Nothing)
                                      cfgMapOverrides
+        -- Override with default for that op or group
         value'' = Map.findWithDefault value'
-                                      (ConfigMapKey (Just key) Nothing)
+                                      (ConfigMapKey (Just key) Nothing Nothing)
                                       cfgMapOverrides
+        -- Override with specific default for that op or group
         value''' = Map.findWithDefault value''
-                                       (ConfigMapKey (Just key) (Just ctx))
+                                       (ConfigMapKey (Just key) (Just ctx) Nothing)
+                                       cfgMapOverrides
+        -- Override with specific for that op or group in within
+        value'''' = Map.findWithDefault value'''
+                                       (ConfigMapKey (Just key) (Just ctx) within)
                                        cfgMapOverrides
     in
-        value'''
+        value''''
+
+cfgMapFind :: LayoutContext -> ByteString -> ConfigMap a -> a
+cfgMapFind ctx key c = cfgMapFind' ctx Nothing key c
+
+cfgOpWs' :: LayoutContext -> Maybe WithinDeclaration -> ByteString -> OpConfig -> Whitespace
+cfgOpWs' ctx within op = cfgMapFind' ctx within op . unOpConfig
 
 cfgOpWs :: LayoutContext -> ByteString -> OpConfig -> Whitespace
-cfgOpWs ctx op = cfgMapFind ctx op . unOpConfig
+cfgOpWs ctx op = cfgOpWs' ctx Nothing op
+
+cfgGroupWs' :: LayoutContext -> Maybe WithinDeclaration -> ByteString -> GroupConfig -> Whitespace
+cfgGroupWs' ctx within op = cfgMapFind' ctx within op . unGroupConfig
 
 cfgGroupWs :: LayoutContext -> ByteString -> GroupConfig -> Whitespace
-cfgGroupWs ctx op = cfgMapFind ctx op . unGroupConfig
+cfgGroupWs ctx op = cfgGroupWs' ctx Nothing op
 
 inWs :: Location -> WsLoc -> Bool
 inWs _ WsBoth = True
@@ -382,6 +413,12 @@ instance ToJSON LayoutContext where
 instance FromJSON LayoutContext where
     parseJSON = genericParseJSON (enumOptions 0)
 
+instance ToJSON WithinDeclaration where
+    toJSON = genericToJSON (enumOptions 0)
+
+instance FromJSON WithinDeclaration where
+    parseJSON = genericParseJSON (enumOptions 0)
+
 instance ToJSON WsLoc where
     toJSON = genericToJSON (enumOptions 2)
 
@@ -415,23 +452,73 @@ textToLayout "expression" = Just Expression
 textToLayout "other" = Just Other
 textToLayout _ = Nothing
 
-keyToText :: ConfigMapKey -> T.Text
-keyToText (ConfigMapKey Nothing Nothing) = "default"
-keyToText (ConfigMapKey (Just n) Nothing) = T.decodeUtf8 n
-keyToText (ConfigMapKey Nothing (Just l)) = "* in " `T.append` layoutToText l
-keyToText (ConfigMapKey (Just n) (Just l)) =
-    T.decodeUtf8 n `T.append` " in " `T.append` layoutToText l
+withinToText :: WithinDeclaration -> T.Text
+withinToText ModuleDeclaration = "module"
+withinToText RecordDeclaration = "record"
+withinToText TypeDeclaration = "type"
+withinToText OtherDeclaration = "other"
 
+textToWithin :: T.Text -> Maybe WithinDeclaration
+textToWithin "module" = Just ModuleDeclaration
+textToWithin "record" = Just RecordDeclaration
+textToWithin "type" = Just TypeDeclaration
+textToWithin "other" = Just OtherDeclaration
+textToWithin _ = Nothing
+
+keyToText :: ConfigMapKey -> T.Text
+keyToText (ConfigMapKey Nothing Nothing Nothing) = "default"
+keyToText (ConfigMapKey (Just n) Nothing Nothing) = T.decodeUtf8 n
+keyToText (ConfigMapKey Nothing (Just l) Nothing) = "* in " `T.append` layoutToText l
+keyToText (ConfigMapKey Nothing Nothing (Just w)) = "* within " `T.append` withinToText w
+keyToText (ConfigMapKey Nothing (Just l) (Just w)) =
+  "* in " `T.append` layoutToText l `T.append` " within " `T.append` withinToText w
+keyToText (ConfigMapKey (Just n) (Just l) Nothing) =
+    T.decodeUtf8 n `T.append` " in " `T.append` layoutToText l
+keyToText (ConfigMapKey (Just n) Nothing (Just w)) =
+    T.decodeUtf8 n `T.append` " within " `T.append` withinToText w
+keyToText (ConfigMapKey (Just n) (Just l) (Just w)) =
+    T.decodeUtf8 n `T.append` " in " `T.append` layoutToText l `T.append` " within " `T.append` withinToText w
+
+-- attoparsec for within parsing
 textToKey :: T.Text -> Maybe ConfigMapKey
-textToKey t = case T.splitOn " in " t of
-    [ "default" ] -> Just (ConfigMapKey Nothing Nothing)
-    [ "*", "*" ] -> Just (ConfigMapKey Nothing Nothing)
-    [ name ] -> Just (ConfigMapKey (Just (T.encodeUtf8 name)) Nothing)
-    [ name, "*" ] -> Just (ConfigMapKey (Just (T.encodeUtf8 name)) Nothing)
-    [ "*", layout ] -> ConfigMapKey Nothing . Just <$> textToLayout layout
-    [ name, layout ] -> ConfigMapKey (Just (T.encodeUtf8 name)) . Just
-        <$> textToLayout layout
-    _ -> Nothing
+textToKey t = 
+  let
+    hasWithin = " within " `T.isInfixOf` t
+    hasIn = " in " `T.isInfixOf` t
+  in case (hasIn, hasWithin) of
+    (False, False) -> case t of
+      "default" -> Just (ConfigMapKey Nothing Nothing Nothing)
+      name -> Just (ConfigMapKey (Just (T.encodeUtf8 name)) Nothing Nothing)
+      _ -> Nothing
+    (True, False) -> case T.splitOn " in " t of
+      [ "*", "*" ] -> Just (ConfigMapKey Nothing Nothing Nothing)
+      [ name, "*" ] -> Just (ConfigMapKey (Just (T.encodeUtf8 name)) Nothing Nothing)
+      [ "*", layout ] -> noWithin Nothing . Just <$> textToLayout layout
+      [ name, layout ] -> noWithin (Just (T.encodeUtf8 name)) . Just
+          <$> textToLayout layout
+      _ -> Nothing
+    (False, True) -> case T.splitOn " within " t of
+      [ "*", "*" ] -> Just (ConfigMapKey Nothing Nothing Nothing)
+      [ name, "*" ] -> Just (ConfigMapKey (Just (T.encodeUtf8 name)) Nothing Nothing)
+      [ "*", within ] -> noLayout Nothing . Just <$> textToWithin within
+      [ name, within ] -> noLayout (Just (T.encodeUtf8 name)) . Just
+          <$> textToWithin within
+      _ -> Nothing
+    (True, True) -> case T.splitOn " in " t of
+      [ name', rest ] -> case T.splitOn " within" rest of
+          [ layout', within' ] -> case (name', layout', within') of
+              ( "*", "*", "*" ) -> Just (ConfigMapKey Nothing Nothing Nothing)
+              ( "*", layout, "*" ) -> Just (ConfigMapKey Nothing (textToLayout layout) Nothing)
+              ( "*", "*", within ) -> Just (ConfigMapKey Nothing Nothing (textToWithin within))
+              ( name, "*", "*" ) -> Just (ConfigMapKey (Just (T.encodeUtf8 name)) Nothing Nothing)
+              ( name, layout, "*" ) -> Just (ConfigMapKey (Just (T.encodeUtf8 name)) (textToLayout layout) Nothing)
+              ( name, "*", within ) -> Just (ConfigMapKey (Just (T.encodeUtf8 name)) Nothing (textToWithin within))
+              ( name, layout, within ) -> Just (ConfigMapKey (Just (T.encodeUtf8 name)) (textToLayout layout) (textToWithin within))
+              _ -> Nothing
+      _ -> Nothing
+  where
+    noWithin o l = ConfigMapKey o l Nothing
+    noLayout o w = ConfigMapKey o Nothing w
 
 instance ToJSON a => ToJSON (ConfigMap a) where
     toJSON ConfigMap{..} = toJSON $ Map.insert "default" cfgMapDefault $
@@ -473,6 +560,20 @@ instance ToJSON LayoutConfig where
 
 instance FromJSON LayoutConfig where
     parseJSON = genericParseJSON (recordOptions 9)
+
+instance ToJSON WithinLayout where
+    toJSON = genericToJSON (recordOptions 2)
+
+instance FromJSON WithinLayout where
+    parseJSON v@(JSON.String t) = do
+        layout <- parseJSON v
+        pure WithinLayout { wlModuleLayout = layout
+                          , wlRecordLayout = layout
+                          , wlTypeLayout = layout
+                          , wlOtherLayout = layout
+                          }
+
+    parseJSON o = genericParseJSON (recordOptions 2) o
 
 instance ToJSON OpConfig where
     toJSON = genericToJSON (recordOptions 0)
