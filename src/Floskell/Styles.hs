@@ -50,7 +50,7 @@ chrisDoneCfg =
                              , cfgLayoutLet = Vertical
                              , cfgLayoutListComp = Flex
                              , cfgLayoutRecord = Vertical
-                             , cfgLayoutType = TryOneline
+                             , cfgLayoutType = WithinLayout TryOneline TryOneline TryOneline TryOneline 
                              }
 
     cfgOp =
@@ -59,16 +59,16 @@ chrisDoneCfg =
                            }
 
     opWsOverrides =
-        [ (ConfigMapKey (Just ",") Nothing, Whitespace WsNone WsBefore False)
-        , ( ConfigMapKey (Just "record") Nothing
+        [ (ConfigMapKey (Just ",") Nothing Nothing, Whitespace WsNone WsBefore False)
+        , ( ConfigMapKey (Just "record") Nothing Nothing
           , Whitespace WsAfter WsNone False
           )
-        , ( ConfigMapKey (Just ".") (Just Type)
+        , ( ConfigMapKey (Just ".") (Just Type) Nothing
           , Whitespace WsAfter WsAfter False
           )
-        , (ConfigMapKey (Just "=") Nothing, Whitespace WsBoth WsAfter False)
-        , (ConfigMapKey (Just "<-") Nothing, Whitespace WsBoth WsAfter False)
-        , (ConfigMapKey (Just ":") Nothing, Whitespace WsNone WsBefore False)
+        , (ConfigMapKey (Just "=") Nothing Nothing, Whitespace WsBoth WsAfter False)
+        , (ConfigMapKey (Just "<-") Nothing Nothing, Whitespace WsBoth WsAfter False)
+        , (ConfigMapKey (Just ":") Nothing Nothing, Whitespace WsNone WsBefore False)
         ]
 
     cfgGroup =
@@ -138,7 +138,7 @@ cramerCfg = defaultConfig { cfgAlign
                              , cfgLayoutLet = TryOneline
                              , cfgLayoutListComp = TryOneline
                              , cfgLayoutRecord = TryOneline
-                             , cfgLayoutType = TryOneline
+                             , cfgLayoutType = WithinLayout TryOneline TryOneline TryOneline TryOneline 
                              }
 
     cfgOp =
@@ -147,20 +147,20 @@ cramerCfg = defaultConfig { cfgAlign
                            }
 
     opWsOverrides =
-        [ (ConfigMapKey (Just ",") Nothing, Whitespace WsAfter WsBefore False)
-        , ( ConfigMapKey (Just "record") Nothing
+        [ (ConfigMapKey (Just ",") Nothing Nothing, Whitespace WsAfter WsBefore False)
+        , ( ConfigMapKey (Just "record") Nothing Nothing
           , Whitespace WsAfter WsNone False
           )
-        , ( ConfigMapKey (Just ".") (Just Type)
+        , ( ConfigMapKey (Just ".") (Just Type) Nothing
           , Whitespace WsAfter WsAfter False
           )
-        , (ConfigMapKey (Just "=") Nothing, Whitespace WsBoth WsAfter False)
-        , (ConfigMapKey (Just "$") Nothing, Whitespace WsBoth WsAfter False)
-        , (ConfigMapKey (Just "@") Nothing, Whitespace WsNone WsNone False)
-        , ( ConfigMapKey (Just "->") (Just Expression)
+        , (ConfigMapKey (Just "=") Nothing Nothing, Whitespace WsBoth WsAfter False)
+        , (ConfigMapKey (Just "$") Nothing Nothing, Whitespace WsBoth WsAfter False)
+        , (ConfigMapKey (Just "@") Nothing Nothing, Whitespace WsNone WsNone False)
+        , ( ConfigMapKey (Just "->") (Just Expression) Nothing
           , Whitespace WsBoth WsAfter False
           )
-        , ( ConfigMapKey (Just "record") (Just Pattern)
+        , ( ConfigMapKey (Just "record") (Just Pattern) Nothing
           , Whitespace WsNone WsNone False
           )
         ]
@@ -172,20 +172,20 @@ cramerCfg = defaultConfig { cfgAlign
                               }
 
     groupWsOverrides =
-        [ (ConfigMapKey Nothing (Just Type), Whitespace WsNone WsAfter False)
-        , ( ConfigMapKey Nothing (Just Pattern)
+        [ (ConfigMapKey Nothing (Just Type) Nothing, Whitespace WsNone WsAfter False)
+        , ( ConfigMapKey Nothing (Just Pattern) Nothing
           , Whitespace WsNone WsAfter False
           )
-        , (ConfigMapKey (Just "$(") Nothing, Whitespace WsNone WsNone False)
-        , (ConfigMapKey (Just "[|") Nothing, Whitespace WsNone WsNone False)
-        , (ConfigMapKey (Just "[d|") Nothing, Whitespace WsNone WsNone False)
-        , (ConfigMapKey (Just "[p|") Nothing, Whitespace WsNone WsNone False)
-        , (ConfigMapKey (Just "[t|") Nothing, Whitespace WsNone WsNone False)
-        , (ConfigMapKey (Just "(") Nothing, Whitespace WsNone WsAfter False)
-        , ( ConfigMapKey (Just "(") (Just Other)
+        , (ConfigMapKey (Just "$(") Nothing Nothing, Whitespace WsNone WsNone False)
+        , (ConfigMapKey (Just "[|") Nothing Nothing, Whitespace WsNone WsNone False)
+        , (ConfigMapKey (Just "[d|") Nothing Nothing, Whitespace WsNone WsNone False)
+        , (ConfigMapKey (Just "[p|") Nothing Nothing, Whitespace WsNone WsNone False)
+        , (ConfigMapKey (Just "[t|") Nothing Nothing, Whitespace WsNone WsNone False)
+        , (ConfigMapKey (Just "(") Nothing Nothing, Whitespace WsNone WsAfter False)
+        , ( ConfigMapKey (Just "(") (Just Other) Nothing
           , Whitespace WsBoth WsAfter False
           )
-        , ( ConfigMapKey (Just "[") (Just Pattern)
+        , ( ConfigMapKey (Just "[") (Just Pattern) Nothing
           , Whitespace WsBoth WsAfter False
           )
         , (ConfigMapKey (Just "[") (Just Type), Whitespace WsNone WsNone False)
@@ -251,7 +251,7 @@ gibianskyCfg = defaultConfig { cfgAlign
                              , cfgLayoutLet = Vertical
                              , cfgLayoutListComp = TryOneline
                              , cfgLayoutRecord = TryOneline
-                             , cfgLayoutType = TryOneline
+                             , cfgLayoutType = WithinLayout TryOneline TryOneline TryOneline TryOneline 
                              }
 
     cfgOp =
@@ -260,15 +260,15 @@ gibianskyCfg = defaultConfig { cfgAlign
                            }
 
     opWsOverrides =
-        [ (ConfigMapKey (Just ",") Nothing, Whitespace WsAfter WsBefore False)
-        , ( ConfigMapKey (Just "record") Nothing
+        [ (ConfigMapKey (Just ",") Nothing Nothing, Whitespace WsAfter WsBefore False)
+        , ( ConfigMapKey (Just "record") Nothing Nothing
           , Whitespace WsAfter WsNone False
           )
-        , ( ConfigMapKey (Just ".") (Just Type)
+        , ( ConfigMapKey (Just ".") (Just Type) Nothing
           , Whitespace WsAfter WsAfter False
           )
-        , (ConfigMapKey (Just "=") Nothing, Whitespace WsBoth WsAfter False)
-        , (ConfigMapKey (Just ":") Nothing, Whitespace WsNone WsBefore False)
+        , (ConfigMapKey (Just "=") Nothing Nothing, Whitespace WsBoth WsAfter False)
+        , (ConfigMapKey (Just ":") Nothing Nothing, Whitespace WsNone WsBefore False)
         ]
 
     cfgGroup =
@@ -278,7 +278,7 @@ gibianskyCfg = defaultConfig { cfgAlign
                               }
 
     groupWsOverrides =
-        [ (ConfigMapKey (Just "{") Nothing, Whitespace WsBoth WsAfter False) ]
+        [ (ConfigMapKey (Just "{") Nothing Nothing, Whitespace WsBoth WsAfter False) ]
 
     cfgOptions = OptionConfig { cfgOptionSortPragmas           = False
                               , cfgOptionSplitLanguagePragmas  = False
@@ -323,7 +323,7 @@ johanTibellCfg =
                              , cfgLayoutLet = Vertical
                              , cfgLayoutListComp = Flex
                              , cfgLayoutRecord = Vertical
-                             , cfgLayoutType = TryOneline
+                             , cfgLayoutType = WithinLayout TryOneline TryOneline TryOneline TryOneline 
                              }
 
     cfgOp =
@@ -332,24 +332,24 @@ johanTibellCfg =
                            }
 
     opWsOverrides =
-        [ (ConfigMapKey (Just ",") Nothing, Whitespace WsAfter WsBefore False)
-        , ( ConfigMapKey (Just "record") Nothing
+        [ (ConfigMapKey (Just ",") Nothing Nothing, Whitespace WsAfter WsBefore False)
+        , ( ConfigMapKey (Just "record") Nothing Nothing
           , Whitespace WsAfter WsAfter True
           )
-        , ( ConfigMapKey (Just ".") (Just Type)
+        , ( ConfigMapKey (Just ".") (Just Type) Nothing
           , Whitespace WsAfter WsAfter False
           )
-        , (ConfigMapKey (Just "=") Nothing, Whitespace WsBoth WsAfter False)
-        , ( ConfigMapKey (Just ":") (Just Pattern)
+        , (ConfigMapKey (Just "=") Nothing Nothing, Whitespace WsBoth WsAfter False)
+        , ( ConfigMapKey (Just ":") (Just Pattern) Nothing
           , Whitespace WsNone WsBefore False
           )
-        , ( ConfigMapKey (Just ",") (Just Pattern)
+        , ( ConfigMapKey (Just ",") (Just Pattern) Nothing
           , Whitespace WsNone WsBefore False
           )
-        , ( ConfigMapKey (Just ",") (Just Other)
+        , ( ConfigMapKey (Just ",") (Just Other) Nothing
           , Whitespace WsNone WsBefore False
           )
-        , ( ConfigMapKey (Just "record") (Just Pattern)
+        , ( ConfigMapKey (Just "record") (Just Pattern) Nothing
           , Whitespace WsAfter WsAfter False
           )
         ]
@@ -361,8 +361,8 @@ johanTibellCfg =
                               }
 
     groupWsOverrides =
-        [ (ConfigMapKey (Just "{") Nothing, Whitespace WsBoth WsAfter False)
-        , ( ConfigMapKey (Just "{") (Just Pattern)
+        [ (ConfigMapKey (Just "{") Nothing Nothing, Whitespace WsBoth WsAfter False)
+        , ( ConfigMapKey (Just "{") (Just Pattern) Nothing
           , Whitespace WsNone WsNone False
           )
         ]

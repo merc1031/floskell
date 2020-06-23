@@ -825,11 +825,12 @@ instance Pretty Decl where
         linedOnside typeeqns
 
     prettyPrint (DataDecl _ dataornew mcontext declhead qualcondecls derivings) = do
-        depend' (pretty dataornew) $ do
-            mapM_ pretty mcontext
-            pretty declhead
-            unless (null qualcondecls) $ prettyConDecls qualcondecls
-        mapM_ pretty derivings
+        within RecordDeclaration $ do
+          depend' (pretty dataornew) $ do
+              mapM_ pretty mcontext
+              pretty declhead
+              unless (null qualcondecls) $ prettyConDecls qualcondecls
+          mapM_ pretty derivings
 
     prettyPrint (GDataDecl _
                            dataornew
@@ -838,16 +839,18 @@ instance Pretty Decl where
                            mkind
                            gadtdecls
                            derivings) = do
-        depend' (pretty dataornew) $ do
-            mapM_ pretty mcontext
-            pretty declhead
-            mayM_ mkind $ \kind -> do
-                operator Declaration "::"
-                pretty kind
-            write " where"
-            newline
-            linedOnside gadtdecls
-        mapM_ pretty derivings
+        within RecordDeclaration $ do
+          depend' (pretty dataornew) $ do
+              traceM $ ("In Gadt " <> show mkind)
+              mapM_ pretty mcontext
+              pretty declhead
+              mayM_ mkind $ \kind -> do
+                  operator Declaration "::" -- This is not the same as a type declaration... its a record declaration
+                  pretty kind
+              write " where"
+              newline
+              linedOnside gadtdecls
+          mapM_ pretty derivings
 
     prettyPrint (DataFamDecl _ mcontext declhead mresultsig) =
         depend "data family" $ do
@@ -926,8 +929,10 @@ instance Pretty Decl where
 
     prettyPrint (SpliceDecl _ expr) = pretty expr
 
-    prettyPrint (TypeSig _ names ty) =
-        onside $ prettyTypesig Declaration names ty
+    prettyPrint (TypeSig _ names ty) = do
+        -- traceM $ "in typesig " <> show names
+        within TypeDeclaration $ do
+          onside $ prettyTypesig Declaration names ty
 
 #if MIN_VERSION_haskell_src_exts(1,21,0)
     prettyPrint (PatSynSig _
@@ -1241,17 +1246,22 @@ instance Pretty GadtDecl where
 #if MIN_VERSION_haskell_src_exts(1,21,0)
     prettyPrint (GadtDecl _ name _ _ mfielddecls ty) = do
         pretty name
-        operator Declaration "::"
+        operator Declaration "::" -- for gadt this is 2nd :: and then in the decl can be more ::
+        -- Make this configurable somehow?
+        col <- getNextColumn
         mayM_ mfielddecls $ \decls -> do
             prettyRecordFields len Declaration decls
+            newline
             operator Type "->"
         pretty ty
 #else
     prettyPrint (GadtDecl _ name mfielddecls ty) = do
         pretty name
         operator Declaration "::"
+        col <- getNextColumn
         mayM_ mfielddecls $ \decls -> do
             prettyRecordFields len Declaration decls
+            newline
             operator Type "->"
         pretty ty
 #endif
@@ -1382,8 +1392,10 @@ instance Pretty Asst where
 instance Pretty Type where
     prettyPrint t = do
         layout <- gets psTypeLayout
+        withinDeclaration <- gets psWithinDeclaration
+        -- traceM ("In type or kind " <> show t <> " " <> show layout)
         case layout of
-            TypeFree -> withLayout cfgLayoutType flex vertical
+            TypeFree -> withLayout (withinDeclToLayout withinDeclaration . cfgLayoutType) flex vertical
             TypeFlex -> prettyF t
             TypeVertical -> prettyV t
       where

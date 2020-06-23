@@ -27,6 +27,7 @@ module Floskell.Printers
     , withIndentAfter
     , withIndentBy
     , withLayout
+    , withinDeclToLayout
     , inter
       -- * Indentation
     , getNextColumn
@@ -263,6 +264,12 @@ withLayout fn flex vertical = do
         Vertical -> vertical
         TryOneline -> oneline flex <|> vertical
 
+withinDeclToLayout :: WithinDeclaration -> WithinLayout -> Layout
+withinDeclToLayout ModuleDeclaration = wlModuleLayout
+withinDeclToLayout RecordDeclaration = wlRecordLayout
+withinDeclToLayout TypeDeclaration = wlTypeLayout
+withinDeclToLayout OtherDeclaration = wlOtherLayout
+
 inter :: Printer () -> [Printer ()] -> Printer ()
 inter x = sequence_ . intersperse x
 
@@ -354,7 +361,9 @@ groupH ctx open close p = do
 
 groupV :: LayoutContext -> ByteString -> ByteString -> Printer () -> Printer ()
 groupV ctx open close p = aligned $ do
-    ws <- getConfig (cfgGroupWs ctx open . cfgGroup)
+    withinDeclaration <- gets psWithinDeclaration
+    ws <- getConfig (cfgGroupWs' ctx (Just withinDeclaration) open . cfgGroup)
+    -- traceM $ show ws
     write open
     if wsLinebreak Before ws then newline else when (wsSpace Before ws) space
     p
@@ -380,7 +389,9 @@ withOperatorFormatting :: LayoutContext
                        -> (Printer () -> Printer a)
                        -> Printer a
 withOperatorFormatting ctx op opp fn = do
-    force <- getConfig (wsForceLinebreak . cfgOpWs ctx op . cfgOp)
+    withinDeclaration <- gets psWithinDeclaration
+    force <- getConfig (wsForceLinebreak . cfgOpWs' ctx (Just withinDeclaration) op . cfgOp)
+    traceM $ "\nFormatting operator " <> show withinDeclaration <> " " <> show (ctx, op, force)
     if force then vert else hor <|> vert
   where
     hor = withOperatorFormattingH ctx op opp fn
