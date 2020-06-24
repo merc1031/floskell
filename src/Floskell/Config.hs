@@ -191,6 +191,7 @@ data LayoutConfig =
                  , cfgLayoutListComp :: !Layout
                  , cfgLayoutList :: !Layout
                  , cfgLayoutRecord :: !Layout
+                 , cfgLayoutConstraints :: !Layout
                  , cfgLayoutType :: !WithinLayout
                  }
     deriving ( Generic )
@@ -207,6 +208,7 @@ instance Default LayoutConfig where
                        , cfgLayoutListComp = Flex
                        , cfgLayoutList = Flex
                        , cfgLayoutRecord = Flex
+                       , cfgLayoutConstraints = Flex
                        , cfgLayoutType = WithinLayout Flex Flex Flex Flex
                        }
 
