@@ -29,6 +29,7 @@ import           Floskell.Types
 
 import qualified Language.Haskell.Exts.Pretty as HSE
 import           Language.Haskell.Exts.Syntax
+import Debug.Trace
 
 -- | Like `span`, but comparing adjacent items.
 run :: (a -> a -> Bool) -> [a] -> ([a], [a])
@@ -264,7 +265,8 @@ linedOnside = linedFn prettyOnside
 
 listVOpLen :: LayoutContext -> ByteString -> Printer Int
 listVOpLen ctx sep = do
-    ws <- getConfig (cfgOpWs ctx sep . cfgOp)
+    withinDeclaration <- gets psWithinDeclaration
+    ws <- getConfig (cfgOpWs' ctx (Just withinDeclaration) sep . cfgOp)
     return $ if wsLinebreak After ws
              then 0
              else BS.length sep + if wsSpace After ws then 1 else 0
@@ -290,7 +292,7 @@ listVinternal ctx sep xs = case xs of
         -- former can suppress onside for the latter.
         forM_ xs' $ \x' -> do
             column itemCol $ printComments Before x'
-            column sepCol $ operatorV ctx sep
+            column' sepCol $ operatorV ctx sep
             column itemCol $ cut $ prettyPrint x'
             column itemCol $ printComments After x'
 
@@ -650,7 +652,7 @@ prettyApp fn args = withLayout cfgLayoutApp flex vertical
 
     vertical = do
         pretty fn
-        withIndent cfgIndentApp $ lined args
+        withIndent cfgIndentApp True $ lined args
 
 prettyInfixApp
     :: (Annotated ast, Pretty ast, Annotated op, HSE.Pretty (op NodeInfo))
@@ -721,9 +723,9 @@ prettyPragma' name mp = do
     write " #-}"
 
 prettyBinds :: Binds NodeInfo -> Printer ()
-prettyBinds binds = withIndentBy cfgIndentWhere $ do
+prettyBinds binds = withIndentBy cfgIndentWhere True $ do
     write "where"
-    withIndent cfgIndentWhereBinds $ pretty binds
+    withIndent cfgIndentWhereBinds True $ pretty binds
 
 instance Pretty Module where
     prettyPrint (Module _ mhead pragmas imports decls) = inter blankline $
@@ -763,6 +765,17 @@ instance Pretty WarningText where
     prettyPrint (WarnText _ s) = write "{-# WARNING " >> string (show s)
         >> write " #-}"
 
+instance Pretty ExportSpecList where
+    prettyPrint (ExportSpecList _ exports) =
+        withLayout cfgLayoutExportSpecList flex vertical
+      where
+        flex = do
+            space
+            listAutoWrap Other "(" ")" "," exports
+
+        vertical = withIndent cfgIndentExportSpecList True $
+            listV Other "(" ")" "," exports
+
 instance Pretty ExportSpec
 
 instance Pretty ImportDecl where
@@ -794,7 +807,7 @@ instance Pretty ImportSpecList where
             when hiding $ write "hiding "
             listAutoWrap Other "(" ")" "," imports
 
-        vertical imports = withIndent cfgIndentImportSpecList $ do
+        vertical imports = withIndent cfgIndentImportSpecList True $ do
             when hiding $ write "hiding "
             listV Other "(" ")" "," imports
 
@@ -838,7 +851,7 @@ instance Pretty Decl where
                            declhead
                            mkind
                            gadtdecls
-                           derivings) = do
+                           derivings) =
         within RecordDeclaration $ do
           depend' (pretty dataornew) $ do
               traceM $ ("In Gadt " <> show mkind)
@@ -887,10 +900,10 @@ instance Pretty Decl where
                 list' Declaration "," fundeps
         mayM_ mclassdecls $ \decls -> do
             write " where"
-            withIndent cfgIndentClass $ withComputedTabStop stopRhs
-                                                            cfgAlignClass
-                                                            measureClassDecl
-                                                            decls $
+            withIndent cfgIndentClass True $ withComputedTabStop stopRhs
+                                                                 cfgAlignClass
+                                                                 measureClassDecl
+                                                                 decls $
                 prettyDecls skipBlankClassDecl DeclClass decls
 
     prettyPrint (InstDecl _ moverlap instrule minstdecls) = do
@@ -899,7 +912,7 @@ instance Pretty Decl where
             pretty instrule
         mayM_ minstdecls $ \decls -> do
             write " where"
-            withIndent cfgIndentClass $
+            withIndent cfgIndentClass True $
                 withComputedTabStop stopRhs cfgAlignClass measureInstDecl decls $
                 prettyDecls skipBlankInstDecl DeclInstance decls
 
@@ -929,7 +942,7 @@ instance Pretty Decl where
 
     prettyPrint (SpliceDecl _ expr) = pretty expr
 
-    prettyPrint (TypeSig _ names ty) = do
+    prettyPrint (TypeSig _ names ty) =
         -- traceM $ "in typesig " <> show names
         within TypeDeclaration $ do
           onside $ prettyTypesig Declaration names ty
@@ -1189,7 +1202,7 @@ instance Pretty InstDecl where
 instance Pretty Deriving where
 #if MIN_VERSION_haskell_src_exts(1,20,0)
     prettyPrint (Deriving _ mderivstrategy instrules) =
-        withIndentBy cfgIndentDeriving $ do
+        withIndentBy cfgIndentDeriving True $ do
             withOperatorFormatting Other "deriving" (write "deriving" >> prettyStratBefore) id
             case instrules of
                 [ i@IRule{} ] -> pretty i
@@ -1204,7 +1217,7 @@ instance Pretty Deriving where
             Just x -> (space *> pretty x <* space, return ())
             _ -> (return (), return ())
 #else
-    prettyPrint (Deriving _ instrules) = withIndentBy cfgIndentDeriving $ do
+    prettyPrint (Deriving _ instrules) = withIndentBy cfgIndentDeriving True $ do
         write "deriving "
         case instrules of
             [ i@IRule{} ] -> pretty i
@@ -1248,7 +1261,6 @@ instance Pretty GadtDecl where
         pretty name
         operator Declaration "::" -- for gadt this is 2nd :: and then in the decl can be more ::
         -- Make this configurable somehow?
-        col <- getNextColumn
         mayM_ mfielddecls $ \decls -> do
             prettyRecordFields len Declaration decls
             newline
@@ -1258,7 +1270,6 @@ instance Pretty GadtDecl where
     prettyPrint (GadtDecl _ name mfielddecls ty) = do
         pretty name
         operator Declaration "::"
-        col <- getNextColumn
         mayM_ mfielddecls $ \decls -> do
             prettyRecordFields len Declaration decls
             newline
@@ -1299,20 +1310,28 @@ instance Pretty Match where
                                     id
             linedOnside pats
 
-instance Pretty Rhs where
-    prettyPrint (UnGuardedRhs _ expr) =
-        cut $ withLayout cfgLayoutDeclaration flex vertical
-      where
-        flex = do
-            operator Declaration "="
-            pretty expr
+prettyUnGuardedRHS :: (Annotated ast, Pretty ast) => LayoutContext -> Bool -> ast NodeInfo -> Printer ()
+prettyUnGuardedRHS _ctx sep expr =
+      cut $ withLayout cfgLayoutDeclaration flex vertical
+    where
+      flex = do
+          operator Declaration "="
+          pretty expr
 
-        vertical = do
-            operatorV Declaration "="
-            pretty expr
+      vertical = do
+          operatorV Declaration "="
+          when sep newline
+          pretty expr
+
+instance Pretty Rhs where
+    prettyPrint (UnGuardedRhs _ expr@(Let {})) = do
+        letSpecialization <- getConfig (cfgOptionLetSpecialization . cfgOptions)
+        prettyUnGuardedRHS Other letSpecialization expr
+    prettyPrint (UnGuardedRhs _ expr) =
+        prettyUnGuardedRHS Other False expr
 
     prettyPrint (GuardedRhss _ guardedrhss) =
-        withIndent cfgIndentMultiIf $ linedOnside guardedrhss
+        withIndent cfgIndentMultiIf True $ linedOnside guardedrhss
 
 instance Pretty GuardedRhs where
     prettyPrint (GuardedRhs _ stmts expr) =
@@ -1498,13 +1517,19 @@ instance Pretty Type where
                 write "forall "
                 inter space $ map pretty tyvarbinds
                 withOperatorFormattingV Type "." (write "." >> space) id
+            layout <- getConfig (cfgLayoutConstraints . cfgLayout)
+            let listy = case layout of
+                  Flex -> list
+                  Vertical -> listV
+                  TryOneline -> listH
             forM_ mcontext $ \context -> do
                 case context of
                     (CxSingle _ asst) -> pretty asst
-                    (CxTuple _ assts) -> list Type "(" ")" "," assts
+                    (CxTuple _ assts) -> listy Type "(" ")" "," assts
                     (CxEmpty _) -> write "()"
                 operatorV Type "=>"
-            prettyV ty
+            within OtherDeclaration $
+              prettyV ty
 
         prettyV (TyFun _ ty ty') = do
             pretty ty
@@ -1577,6 +1602,37 @@ flexibleOneline p = do
     allowOneline <- getOption cfgOptionFlexibleOneline
     if allowOneline then ignoreOneline p else p
 
+prettyLetIn :: (Annotated ast, Pretty ast)
+            => p
+            -> Bool
+            -> Binds NodeInfo
+            -> ast NodeInfo
+            -> Printer ()
+prettyLetIn _ctx special binds expr = withLayout cfgLayoutLet flex vertical
+  where
+    flex = do
+        write "let "
+        prettyOnside (CompactBinds binds)
+        spaceOrNewline
+        write "in "
+        prettyOnside expr
+
+    vertical = do
+        (letInPrePadding, letInPadding) <- getConfig (cfgOptionLetInPadding . cfgOptions)
+        withIndentAfter cfgIndentLet
+                               (do
+                                    operator Expression "let"
+                                    withIndent cfgIndentLetBinds letInPadding $
+                                        pretty (CompactBinds binds))
+                               (do
+                                    when letInPrePadding newline
+                                    let
+                                      specialty = if special
+                                        then within SpecialDeclaration
+                                        else id
+                                    specialty $ operator Expression "in"
+                                    withIndent cfgIndentLetIn letInPadding $ pretty expr)
+
 instance Pretty Exp where
     prettyPrint (Var _ qname) = pretty qname
 
@@ -1623,24 +1679,13 @@ instance Pretty Exp where
             PBangPat{} : _ -> space
             _ -> return ()
 
-    prettyPrint (Let _ binds expr) = withLayout cfgLayoutLet flex vertical
-      where
-        flex = do
-            write "let "
-            prettyOnside (CompactBinds binds)
-            spaceOrNewline
-            write "in "
-            prettyOnside expr
-
-        vertical = withIndentAfter cfgIndentLet
-                                   (do
-                                        write "let"
-                                        withIndent cfgIndentLetBinds $
-                                            pretty (CompactBinds binds))
-                                   (do
-                                        newline
-                                        write "in"
-                                        withIndent cfgIndentLetIn $ pretty expr)
+    prettyPrint (Let _ binds expr@(Do {})) = do
+      letDoSpecialization <- getConfig (cfgOptionLetDoSpecialization . cfgOptions)
+      prettyLetIn Other letDoSpecialization binds expr
+    prettyPrint (Let _ binds expr@(MDo {})) = do
+      letDoSpecialization <- getConfig (cfgOptionLetDoSpecialization . cfgOptions)
+      prettyLetIn Other letDoSpecialization binds expr
+    prettyPrint (Let _ binds expr) = prettyLetIn Other False binds expr
 
     prettyPrint (If _ expr expr' expr'') = withLayout cfgLayoutIf flex vertical
       where
@@ -1668,7 +1713,7 @@ instance Pretty Exp where
 
     prettyPrint (MultiIf _ guardedrhss) = do
         write "if"
-        withIndent cfgIndentMultiIf . linedOnside $ map GuardedAlt guardedrhss
+        withIndent cfgIndentMultiIf True . linedOnside $ map GuardedAltR guardedrhss
 
     prettyPrint (Case _ expr alts) = do
         write "case "
@@ -1676,17 +1721,17 @@ instance Pretty Exp where
         write " of"
         if null alts
             then write " { }"
-            else flexibleOneline . withIndent cfgIndentCase
+            else flexibleOneline . withIndent cfgIndentCase True
                 . withComputedTabStop stopRhs cfgAlignCase measureAlt alts $
                 lined alts
 
     prettyPrint (Do _ stmts) = flexibleOneline $ do
         write "do"
-        withIndent cfgIndentDo $ linedOnside stmts
+        withIndent cfgIndentDo True $ linedOnside stmts
 
     prettyPrint (MDo _ stmts) = flexibleOneline $ do
         write "mdo"
-        withIndent cfgIndentDo $ linedOnside stmts
+        withIndent cfgIndentDo True $ linedOnside stmts
 
     prettyPrint (Tuple _ boxed exprs) = case boxed of
         Boxed -> list Expression "(" ")" "," exprs
@@ -1707,7 +1752,15 @@ instance Pretty Exp where
         Unboxed -> list Expression "(#" "#)" "," $
             map (MayAst noNodeInfo) mexprs
 
-    prettyPrint (List _ exprs) = list Expression "[" "]" "," exprs
+    prettyPrint (List _ exprs) =
+        withLayout cfgLayoutList flex vertical
+      where
+        flex = group Expression "[" "]" $
+            list' Expression "," exprs
+
+        vertical =
+          groupV Expression "[" "]" $
+            listV' Expression "," exprs
 
     prettyPrint (ParArray _ exprs) = list Expression "[:" ":]" "," exprs
 
@@ -1772,7 +1825,7 @@ instance Pretty Exp where
             pretty expr''
 
     prettyPrint (ListComp _ expr qualstmts) =
-        withLayout cfgLayoutListComp flex vertical
+        within ComprehensionDeclaration $ withLayout cfgLayoutListComp flex vertical
       where
         flex = group Expression "[" "]" $ do
             prettyOnside expr
@@ -1785,7 +1838,7 @@ instance Pretty Exp where
             listV' Expression "," qualstmts
 
     prettyPrint (ParComp _ expr qualstmtss) =
-        withLayout cfgLayoutListComp flex vertical
+        within ComprehensionDeclaration $ withLayout cfgLayoutListComp flex vertical
       where
         flex = group Expression "[" "]" $ do
             prettyOnside expr
@@ -1800,7 +1853,7 @@ instance Pretty Exp where
                 listV' Expression "," qualstmts
 
     prettyPrint (ParArrayComp _ expr qualstmtss) =
-        withLayout cfgLayoutListComp flex vertical
+        within ComprehensionDeclaration $ withLayout cfgLayoutListComp flex vertical
       where
         flex = group Expression "[:" ":]" $ do
             prettyOnside expr
@@ -1924,7 +1977,7 @@ instance Pretty Exp where
         write "\\case"
         if null alts
             then write " { }"
-            else withIndent cfgIndentCase $
+            else withIndent cfgIndentCase True $
                 withComputedTabStop stopRhs cfgAlignCase measureAlt alts $
                 lined alts
 
@@ -2147,7 +2200,7 @@ instance Pretty Stmt where
     prettyPrint (Qualifier _ expr) = pretty expr
 
     prettyPrint (LetStmt _ binds) = do
-        write "let "
+        operator Expression "let"
         pretty $ CompactBinds binds
 
     prettyPrint (RecStmt _ stmts) = do
@@ -2300,12 +2353,22 @@ instance Pretty CallConv
 instance Pretty Overlap
 
 -- Helpers
+newtype GuardedAltR l = GuardedAltR (GuardedRhs l)
+    deriving ( Functor, Annotated )
+
 newtype GuardedAlt l = GuardedAlt (GuardedRhs l)
     deriving ( Functor, Annotated )
 
+instance Pretty GuardedAltR where
+    prettyPrint (GuardedAltR (GuardedRhs _ stmts expr)) = cut $ do
+        operatorSectionR Pattern "|" $ write "|"
+        inter comma $ map pretty stmts
+        operator Expression "->"
+        pretty expr
+
 instance Pretty GuardedAlt where
     prettyPrint (GuardedAlt (GuardedRhs _ stmts expr)) = cut $ do
-        operatorSectionR Pattern "|" $ write "|"
+        operatorSection Pattern "|" $ write "|"
         inter comma $ map pretty stmts
         operator Expression "->"
         pretty expr
@@ -2318,8 +2381,9 @@ instance Pretty GuardedAlts where
         operator Expression "->"
         pretty expr
 
-    prettyPrint (GuardedAlts (GuardedRhss _ guardedrhss)) =
-        withIndent cfgIndentMultiIf $ linedOnside $ map GuardedAlt guardedrhss
+    prettyPrint (GuardedAlts (GuardedRhss _ guardedrhss)) = do
+        multiIfPadding <- getConfig (cfgOptionMultiIfPadding . cfgOptions)
+        withIndent cfgIndentMultiIf multiIfPadding $ linedOnside $ map GuardedAlt guardedrhss
 
 newtype CompactBinds l = CompactBinds (Binds l)
     deriving ( Functor, Annotated )
