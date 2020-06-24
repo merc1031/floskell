@@ -175,6 +175,8 @@ data WithinLayout
   = WithinLayout { wlModuleLayout :: !Layout
                  , wlRecordLayout :: !Layout
                  , wlTypeLayout :: !Layout
+                 , wlSpecialLayout :: !Layout
+                 , wlComprehensionLayout :: !Layout
                  , wlOtherLayout :: !Layout
                  }
     deriving ( Generic )
@@ -209,7 +211,7 @@ instance Default LayoutConfig where
                        , cfgLayoutList = Flex
                        , cfgLayoutRecord = Flex
                        , cfgLayoutConstraints = Flex
-                       , cfgLayoutType = WithinLayout Flex Flex Flex Flex
+                       , cfgLayoutType = WithinLayout Flex Flex Flex Flex Flex Flex
                        }
 
 newtype OpConfig = OpConfig { unOpConfig :: ConfigMap Whitespace }
@@ -510,7 +512,6 @@ textToKey t =
     (False, False) -> case t of
       "default" -> Just (ConfigMapKey Nothing Nothing Nothing)
       name -> Just (ConfigMapKey (Just (T.encodeUtf8 name)) Nothing Nothing)
-      _ -> Nothing
     (True, False) -> case T.splitOn " in " t of
       [ "*", "*" ] -> Just (ConfigMapKey Nothing Nothing Nothing)
       [ name, "*" ] -> Just (ConfigMapKey (Just (T.encodeUtf8 name)) Nothing Nothing)
@@ -526,7 +527,7 @@ textToKey t =
           <$> textToWithin within
       _ -> Nothing
     (True, True) -> case T.splitOn " in " t of
-      [ name', rest ] -> case T.splitOn " within" rest of
+      [ name', rest ] -> case T.splitOn " within " rest of
           [ layout', within' ] -> case (name', layout', within') of
               ( "*", "*", "*" ) -> Just (ConfigMapKey Nothing Nothing Nothing)
               ( "*", layout, "*" ) -> Just (ConfigMapKey Nothing (textToLayout layout) Nothing)
@@ -535,7 +536,7 @@ textToKey t =
               ( name, layout, "*" ) -> Just (ConfigMapKey (Just (T.encodeUtf8 name)) (textToLayout layout) Nothing)
               ( name, "*", within ) -> Just (ConfigMapKey (Just (T.encodeUtf8 name)) Nothing (textToWithin within))
               ( name, layout, within ) -> Just (ConfigMapKey (Just (T.encodeUtf8 name)) (textToLayout layout) (textToWithin within))
-              _ -> Nothing
+          _ -> Nothing
       _ -> Nothing
   where
     noWithin o l = ConfigMapKey o l Nothing
@@ -586,11 +587,13 @@ instance ToJSON WithinLayout where
     toJSON = genericToJSON (recordOptions 2)
 
 instance FromJSON WithinLayout where
-    parseJSON v@(JSON.String t) = do
+    parseJSON v@(JSON.String {}) = do
         layout <- parseJSON v
         pure WithinLayout { wlModuleLayout = layout
                           , wlRecordLayout = layout
                           , wlTypeLayout = layout
+                          , wlSpecialLayout = layout
+                          , wlComprehensionLayout = layout
                           , wlOtherLayout = layout
                           }
 
