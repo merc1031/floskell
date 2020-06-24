@@ -255,6 +255,7 @@ data OptionConfig =
                  , cfgOptionPreserveVerticalSpace :: !Bool
                  , cfgOptionMultiIfPadding        :: !Bool
                  , cfgOptionLetSpecialization     :: !Bool
+                 , cfgOptionLetDoSpecialization   :: !Bool
                  , cfgOptionLetInPadding          :: !(Bool, Bool)
                  , cfgOptionDeclNoBlankLines      :: !(Set DeclarationConstruct)
                  }
@@ -270,6 +271,7 @@ instance Default OptionConfig where
                        , cfgOptionPreserveVerticalSpace = False
                        , cfgOptionMultiIfPadding        = False
                        , cfgOptionLetSpecialization     = False
+                       , cfgOptionLetDoSpecialization   = False
                        , cfgOptionLetInPadding          = (True, True)
                        , cfgOptionDeclNoBlankLines      = Set.empty
                        }
