@@ -745,19 +745,14 @@ instance Pretty ModuleHead where
         depend "module" $ do
             pretty name
             mayM_ mwarning $ withPrefix spaceOrNewline pretty
-        withLayout cfgLayoutExportSpecList flex vertical
-      where
-        flex = do
-            mayM_ mexports $ \(ExportSpecList _ exports) -> do
-                space
-                listAutoWrap Other "(" ")" "," exports
-            write " where"
-
-        vertical = do
-            mayM_ mexports $ \(ExportSpecList _ exports) -> do
-                withIndent cfgIndentExportSpecList $
-                    listV Other "(" ")" "," exports
-            write " where"
+        mayM_ mexports pretty
+        mIndentModuleWhere <- getConfig (cfgIndentModuleWhere . cfgIndent)
+        case mIndentModuleWhere of
+          Just {} ->
+            withIndentBy (fromMaybe 0 . cfgIndentModuleWhere) False $
+              withOperatorFormatting Declaration "module_where" (write "where") id
+          Nothing ->
+            withOperatorFormatting Declaration "module_where" (write "where") id
 
 instance Pretty WarningText where
     prettyPrint (DeprText _ s) = write "{-# DEPRECATED " >> string (show s)

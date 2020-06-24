@@ -136,6 +136,7 @@ data IndentConfig =
     IndentConfig { cfgIndentOnside :: !Int
                  , cfgIndentDeriving :: !Int
                  , cfgIndentWhere :: !Int
+                 , cfgIndentModuleWhere :: !(Maybe Int)
                  , cfgIndentApp :: !Indent
                  , cfgIndentCase :: !Indent
                  , cfgIndentClass :: !Indent
@@ -156,6 +157,7 @@ instance Default IndentConfig where
     def = IndentConfig { cfgIndentOnside = 4
                        , cfgIndentDeriving = 4
                        , cfgIndentWhere = 2
+                       , cfgIndentModuleWhere = Nothing
                        , cfgIndentApp = IndentBy 4
                        , cfgIndentCase = IndentBy 4
                        , cfgIndentClass = IndentBy 4
@@ -314,6 +316,9 @@ defaultConfig =
           )
         , ( ConfigMapKey (Just ".") (Just Type) Nothing
           , Whitespace WsAfter WsAfter False
+          )
+        , ( ConfigMapKey (Just "module_where") (Just Declaration) Nothing
+          , Whitespace WsBefore WsNone False
           )
         ]
 
