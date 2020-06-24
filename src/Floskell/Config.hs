@@ -253,6 +253,9 @@ data OptionConfig =
                  , cfgOptionAlignSumTypeDecl      :: !Bool
                  , cfgOptionFlexibleOneline       :: !Bool
                  , cfgOptionPreserveVerticalSpace :: !Bool
+                 , cfgOptionMultiIfPadding        :: !Bool
+                 , cfgOptionLetSpecialization     :: !Bool
+                 , cfgOptionLetInPadding          :: !(Bool, Bool)
                  , cfgOptionDeclNoBlankLines      :: !(Set DeclarationConstruct)
                  }
     deriving ( Generic )
@@ -265,6 +268,9 @@ instance Default OptionConfig where
                        , cfgOptionAlignSumTypeDecl      = False
                        , cfgOptionFlexibleOneline       = False
                        , cfgOptionPreserveVerticalSpace = False
+                       , cfgOptionMultiIfPadding        = False
+                       , cfgOptionLetSpecialization     = False
+                       , cfgOptionLetInPadding          = (True, True)
                        , cfgOptionDeclNoBlankLines      = Set.empty
                        }
 
