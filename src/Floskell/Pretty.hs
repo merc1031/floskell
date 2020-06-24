@@ -741,7 +741,13 @@ instance Pretty ModuleHead where
             pretty name
             mayM_ mwarning $ withPrefix spaceOrNewline pretty
         mayM_ mexports pretty
-        write " where"
+        mIndentModuleWhere <- getConfig (cfgIndentModuleWhere . cfgIndent)
+        case mIndentModuleWhere of
+          Just {} ->
+            withIndentBy (fromMaybe 0 . cfgIndentModuleWhere) False $
+              withOperatorFormatting Declaration "module_where" (write "where") id
+          Nothing ->
+            withOperatorFormatting Declaration "module_where" (write "where") id
 
 instance Pretty WarningText where
     prettyPrint (DeprText _ s) = write "{-# DEPRECATED " >> string (show s)
