@@ -189,6 +189,7 @@ data LayoutConfig =
                  , cfgLayoutInfixApp :: !Layout
                  , cfgLayoutLet :: !Layout
                  , cfgLayoutListComp :: !Layout
+                 , cfgLayoutList :: !Layout
                  , cfgLayoutRecord :: !Layout
                  , cfgLayoutType :: !WithinLayout
                  }
@@ -204,6 +205,7 @@ instance Default LayoutConfig where
                        , cfgLayoutInfixApp = Flex
                        , cfgLayoutLet = Flex
                        , cfgLayoutListComp = Flex
+                       , cfgLayoutList = Flex
                        , cfgLayoutRecord = Flex
                        , cfgLayoutType = WithinLayout Flex Flex Flex Flex
                        }
