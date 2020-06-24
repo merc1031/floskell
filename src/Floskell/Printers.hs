@@ -32,6 +32,7 @@ module Floskell.Printers
       -- * Indentation
     , getNextColumn
     , column
+    , column'
     , aligned
     , indented
     , indentedBy
@@ -54,6 +55,7 @@ module Floskell.Printers
     , withOperatorFormatting
     , withOperatorFormattingH
     , withOperatorFormattingV
+    , operatorSection
     , operatorSectionL
     , operatorSectionR
     , comma
@@ -222,15 +224,15 @@ withIndentConfig fn align indentby = do
         IndentBy i -> indentby i
         AlignOrIndentBy i -> align <|> indentby i
 
-withIndent :: (IndentConfig -> Indent) -> Printer a -> Printer a
-withIndent fn p = withIndentConfig fn align indentby
+withIndent :: (IndentConfig -> Indent) -> Bool -> Printer a -> Printer a
+withIndent fn pad p = withIndentConfig fn align indentby
   where
     align = do
         space
         aligned p
 
     indentby i = indentedBy i $ do
-        newline
+        when pad newline
         p
 
 withIndentFlex :: (IndentConfig -> Indent) -> Printer a -> Printer a
@@ -256,7 +258,7 @@ withIndentAfter fn before p = withIndentConfig fn align indentby
         withIndentation id before
         indentedBy i p
 
-withIndentBy :: (IndentConfig -> Int) -> Printer a -> Printer a
+withIndentBy :: (IndentConfig -> Int) -> Bool -> Printer a -> Printer a
 withIndentBy fn = withIndent (IndentBy . fn)
 
 withLayout :: (LayoutConfig -> Layout) -> Printer a -> Printer a -> Printer a
@@ -271,6 +273,8 @@ withinDeclToLayout :: WithinDeclaration -> WithinLayout -> Layout
 withinDeclToLayout ModuleDeclaration = wlModuleLayout
 withinDeclToLayout RecordDeclaration = wlRecordLayout
 withinDeclToLayout TypeDeclaration = wlTypeLayout
+withinDeclToLayout SpecialDeclaration = wlSpecialLayout
+withinDeclToLayout ComprehensionDeclaration = wlComprehensionLayout
 withinDeclToLayout OtherDeclaration = wlOtherLayout
 
 inter :: Printer () -> [Printer ()] -> Printer ()
@@ -297,7 +301,10 @@ withIndentation f p = do
 -- | Set the (newline-) indent level to the given column for the given
 -- printer.
 column :: Int -> Printer a -> Printer a
-column i = withIndentation $ \(l, o) -> (i, if i > l then 0 else o)
+column i = withIndentation $ \(pri, o) -> (i, if i > pri then 0 else o)
+
+column' :: Int -> Printer a -> Printer a
+column' i = withIndentation $ \(_pri, _o) -> (i, 0)
 
 aligned :: Printer a -> Printer a
 aligned p = do
@@ -370,12 +377,12 @@ groupV :: LayoutContext -> ByteString -> ByteString -> Printer () -> Printer ()
 groupV ctx open close p = aligned $ do
     withinDeclaration <- gets psWithinDeclaration
     ws <- getConfig (cfgGroupWs' ctx (Just withinDeclaration) open . cfgGroup)
-    -- traceM $ show ws
+    col <- getNextColumn
     write open
     if wsLinebreak Before ws then newline else when (wsSpace Before ws) space
     p
     if wsLinebreak After ws then newline else when (wsSpace After ws) space
-    write close
+    column col $ write close
 
 operator :: LayoutContext -> ByteString -> Printer ()
 operator ctx op = withOperatorFormatting ctx op (write op) id
@@ -406,7 +413,6 @@ withOperatorFormatting :: LayoutContext
 withOperatorFormatting ctx op opp fn = do
     withinDeclaration <- gets psWithinDeclaration
     force <- getConfig (wsForceLinebreak . cfgOpWs' ctx (Just withinDeclaration) op . cfgOp)
-    traceM $ "\nFormatting operator " <> show withinDeclaration <> " " <> show (ctx, op, force)
     if force then vert else hor <|> vert
   where
     hor = withOperatorFormattingH ctx op opp fn
@@ -431,11 +437,19 @@ withOperatorFormattingV :: LayoutContext
                         -> (Printer () -> Printer a)
                         -> Printer a
 withOperatorFormattingV ctx op opp fn = do
-    ws <- getConfig (cfgOpWs ctx op . cfgOp)
-    if wsLinebreak Before ws then newline else when (wsSpace Before ws) space
+    withinDeclaration <- gets psWithinDeclaration
+    ws <- getConfig (cfgOpWs' ctx (Just withinDeclaration) op . cfgOp)
+    if wsLinebreak Before ws then newline >> when (wsSpace Before ws) space else when (wsSpace Before ws) space
     fn $ do
         opp
-        if wsLinebreak After ws then newline else when (wsSpace After ws) space
+        if wsLinebreak After ws then when (wsSpace After ws) space >> newline else when (wsSpace After ws) space
+
+operatorSection :: LayoutContext -> ByteString -> Printer () -> Printer ()
+operatorSection ctx op opp = do
+    ws <- getConfig (cfgOpWs ctx op . cfgOp)
+    when (wsSpace Before ws) space
+    opp
+    when (wsSpace After ws) space
 
 operatorSectionL :: LayoutContext -> ByteString -> Printer () -> Printer ()
 operatorSectionL ctx op opp = do
