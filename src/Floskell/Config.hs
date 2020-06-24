@@ -61,7 +61,12 @@ data Indent = Align | IndentBy !Int | AlignOrIndentBy !Int
 data LayoutContext = Declaration | Type | Pattern | Expression | Other
     deriving ( Eq, Ord, Bounded, Enum, Show, Generic )
 
-data WithinDeclaration = ModuleDeclaration | RecordDeclaration | TypeDeclaration | OtherDeclaration
+data WithinDeclaration = ModuleDeclaration
+                       | RecordDeclaration
+                       | TypeDeclaration
+                       | ComprehensionDeclaration
+                       | SpecialDeclaration
+                       | OtherDeclaration
     deriving ( Eq, Ord, Bounded, Enum, Show, Generic )
 
 data Location = Before | After
@@ -456,12 +461,16 @@ withinToText :: WithinDeclaration -> T.Text
 withinToText ModuleDeclaration = "module"
 withinToText RecordDeclaration = "record"
 withinToText TypeDeclaration = "type"
+withinToText ComprehensionDeclaration = "comprehension"
+withinToText SpecialDeclaration = "special"
 withinToText OtherDeclaration = "other"
 
 textToWithin :: T.Text -> Maybe WithinDeclaration
 textToWithin "module" = Just ModuleDeclaration
 textToWithin "record" = Just RecordDeclaration
 textToWithin "type" = Just TypeDeclaration
+textToWithin "comprehension" = Just ComprehensionDeclaration
+textToWithin "special" = Just SpecialDeclaration
 textToWithin "other" = Just OtherDeclaration
 textToWithin _ = Nothing
 
