@@ -113,6 +113,7 @@ data AlignConfig =
                 , cfgAlignClass        :: !Bool
                 , cfgAlignImportModule :: !Bool
                 , cfgAlignImportSpec   :: !Bool
+                , cfgAlignImportAsMin  :: !(Maybe Int)
                 , cfgAlignLetBinds     :: !Bool
                 , cfgAlignMatches      :: !Bool
                 , cfgAlignRecordFields :: !Bool
@@ -126,6 +127,7 @@ instance Default AlignConfig where
                       , cfgAlignClass        = False
                       , cfgAlignImportModule = False
                       , cfgAlignImportSpec   = False
+                      , cfgAlignImportAsMin  = Nothing
                       , cfgAlignLetBinds     = False
                       , cfgAlignMatches      = False
                       , cfgAlignRecordFields = False
@@ -236,15 +238,16 @@ instance Default GroupConfig where
 
 data ImportsGroupOrder =
     ImportsGroupKeep | ImportsGroupSorted | ImportsGroupGrouped
-    deriving ( Generic )
+    deriving ( Generic, Show )
 
 data ImportsGroup = ImportsGroup { importsPrefixes :: ![String]
                                  , importsOrder    :: !ImportsGroupOrder
                                  }
-    deriving ( Generic )
+    deriving ( Generic, Show )
 
 data SortImportsRule =
     NoImportSort | SortImportsByPrefix | SortImportsByGroups ![ImportsGroup]
+    deriving ( Show )
 
 data DeclarationConstruct = DeclModule | DeclClass | DeclInstance | DeclWhere
     deriving ( Eq, Ord, Generic )

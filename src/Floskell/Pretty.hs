@@ -490,17 +490,28 @@ prettyImports is = do
     sortP <- getOption cfgOptionSortImports
     alignModuleP <- getConfig (cfgAlignImportModule . cfgAlign)
     alignSpecP <- getConfig (cfgAlignImportSpec . cfgAlign)
-    let maxNameLength = maximum $ map (length . moduleName . importModule) is
-        alignModule = if alignModuleP then Just 16 else Nothing
+    alignAsMinP <- getConfig (cfgAlignImportAsMin . cfgAlign)
+    let lenPreamble :: ImportDecl NodeInfo -> Int
+        lenPreamble ImportDecl{..} = 6
+                                   + (if importQualified then 9 + 1 else 0)
+                                   + (if importSrc then 14 + 1 else 0)
+                                   + (if importSafe then 4 + 1 else 0)
+        maxPreamble = maximum $ map lenPreamble is
+        maxNameLength = maximum $ map (length . moduleName . importModule) is
+        alignModule = if alignModuleP then Just maxPreamble else Nothing
         alignSpec = if alignSpecP
-                    then Just (fromMaybe 0 alignModule + 1 + maxNameLength)
+                    then Just $ maximum [ maybe 0 (flip (-) 2) alignAsMinP
+                                        , fromMaybe 0 alignModule + 1 + maxNameLength
+                                        ]
                     else Nothing
     withTabStops [ (stopImportModule, alignModule)
                  , (stopImportSpec, alignSpec)
                  ] $ case sortP of
         NoImportSort -> lined is
-        SortImportsByPrefix -> prettyGroups . groupImports 0 $ sortImports is
-        SortImportsByGroups groups -> prettyGroups $ splitImports groups is
+        SortImportsByPrefix ->
+          prettyGroups . groupImports 0 $ sortImports is
+        SortImportsByGroups groups ->
+          prettyGroups $ splitImports groups is
   where
     prettyGroups = inter blankline . map (inter newline . map (cut . pretty))
 
@@ -799,7 +810,8 @@ instance Pretty ImportSpecList where
 
         vertical imports = withIndent cfgIndentImportSpecList True $ do
             when hiding $ write "hiding "
-            listV Other "(" ")" "," imports
+            groupV Other "(" ")" $
+              listVinternal Other "," imports
 
 instance Pretty ImportSpec
 
