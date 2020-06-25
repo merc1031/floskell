@@ -77,6 +77,7 @@ import           Data.Monoid                ( (<>) )
 import qualified Floskell.Buffer            as Buffer
 import           Floskell.Config
 import           Floskell.Types
+import Debug.Trace
 
 -- | Query part of the pretty printer config
 getConfig :: (Config -> b) -> Printer b
@@ -272,6 +273,9 @@ withLayout fn flex vertical = do
 withinDeclToLayout :: WithinDeclaration -> WithinLayout -> Layout
 withinDeclToLayout ModuleDeclaration = wlModuleLayout
 withinDeclToLayout RecordDeclaration = wlRecordLayout
+withinDeclToLayout GADTDeclaration = wlGADTLayout
+withinDeclToLayout GADTFieldDeclaration = wlGADTFieldLayout
+withinDeclToLayout GADTFieldTypeDeclaration = wlGADTFieldTypeLayout
 withinDeclToLayout TypeDeclaration = wlTypeLayout
 withinDeclToLayout SpecialDeclaration = wlSpecialLayout
 withinDeclToLayout ComprehensionDeclaration = wlComprehensionLayout
@@ -415,6 +419,7 @@ withOperatorFormatting :: LayoutContext
 withOperatorFormatting ctx op opp fn = do
     withinDeclaration <- gets psWithinDeclaration
     force <- getConfig (wsForceLinebreak . cfgOpWs' ctx (Just withinDeclaration) op . cfgOp)
+    traceM $ "Operator " <> show (ctx, withinDeclaration, op, force)
     if force then vert else hor <|> vert
   where
     hor = withOperatorFormattingH ctx op opp fn
@@ -442,6 +447,7 @@ withOperatorFormattingV :: LayoutContext
 withOperatorFormattingV ctx op opp fn = do
     withinDeclaration <- gets psWithinDeclaration
     ws <- getConfig (cfgOpWs' ctx (Just withinDeclaration) op . cfgOp)
+    traceM $ "Operator " <> show (ctx, withinDeclaration, op, ws)
     if wsLinebreak Before ws then newline >> when (wsSpace Before ws) space else when (wsSpace Before ws) space
     fn $ do
         opp
