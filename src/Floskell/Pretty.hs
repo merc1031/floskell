@@ -775,7 +775,9 @@ instance Pretty ExportSpecList where
             listAutoWrap Other "(" ")" "," exports
 
         vertical = withIndent cfgIndentExportSpecList True $
-            listV Other "(" ")" "," exports
+            groupV Other "(" ")" $
+              listVinternal Other "," exports
+            -- listV Other "(" ")" "," exports
 
 instance Pretty ExportSpec
 
