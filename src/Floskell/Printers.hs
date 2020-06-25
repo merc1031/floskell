@@ -357,7 +357,8 @@ brackets p = do
 
 group :: LayoutContext -> ByteString -> ByteString -> Printer () -> Printer ()
 group ctx open close p = do
-    force <- getConfig (wsForceLinebreak . cfgGroupWs ctx open . cfgGroup)
+    withinDeclaration <- gets psWithinDeclaration
+    force <- getConfig (wsForceLinebreak . cfgGroupWs' ctx (Just withinDeclaration) open . cfgGroup)
     if force then vert else oneline hor <|> vert
   where
     hor = groupH ctx open close p
@@ -366,7 +367,8 @@ group ctx open close p = do
 
 groupH :: LayoutContext -> ByteString -> ByteString -> Printer () -> Printer ()
 groupH ctx open close p = do
-    ws <- getConfig (cfgGroupWs ctx open . cfgGroup)
+    withinDeclaration <- gets psWithinDeclaration
+    ws <- getConfig (cfgGroupWs' ctx (Just withinDeclaration) open . cfgGroup)
     write open
     when (wsSpace Before ws) space
     p
@@ -379,9 +381,9 @@ groupV ctx open close p = aligned $ do
     ws <- getConfig (cfgGroupWs' ctx (Just withinDeclaration) open . cfgGroup)
     col <- getNextColumn
     write open
-    if wsLinebreak Before ws then newline else when (wsSpace Before ws) space
+    if wsLinebreak Before ws then newline >> when (wsSpace Before ws) space else when (wsSpace Before ws) space
     p
-    if wsLinebreak After ws then newline else when (wsSpace After ws) space
+    if wsLinebreak After ws then when (wsSpace After ws) space >> newline else when (wsSpace After ws) space
     column col $ write close
 
 operator :: LayoutContext -> ByteString -> Printer ()
@@ -425,7 +427,8 @@ withOperatorFormattingH :: LayoutContext
                         -> (Printer () -> Printer a)
                         -> Printer a
 withOperatorFormattingH ctx op opp fn = do
-    ws <- getConfig (cfgOpWs ctx op . cfgOp)
+    withinDeclaration <- gets psWithinDeclaration
+    ws <- getConfig (cfgOpWs' ctx (Just withinDeclaration) op . cfgOp)
     when (wsSpace Before ws) space
     fn $ do
         opp
@@ -446,20 +449,23 @@ withOperatorFormattingV ctx op opp fn = do
 
 operatorSection :: LayoutContext -> ByteString -> Printer () -> Printer ()
 operatorSection ctx op opp = do
-    ws <- getConfig (cfgOpWs ctx op . cfgOp)
+    withinDeclaration <- gets psWithinDeclaration
+    ws <- getConfig (cfgOpWs' ctx (Just withinDeclaration) op . cfgOp)
     when (wsSpace Before ws) space
     opp
     when (wsSpace After ws) space
 
 operatorSectionL :: LayoutContext -> ByteString -> Printer () -> Printer ()
 operatorSectionL ctx op opp = do
-    ws <- getConfig (cfgOpWs ctx op . cfgOp)
+    withinDeclaration <- gets psWithinDeclaration
+    ws <- getConfig (cfgOpWs' ctx (Just withinDeclaration) op . cfgOp)
     when (wsSpace Before ws) space
     opp
 
 operatorSectionR :: LayoutContext -> ByteString -> Printer () -> Printer ()
 operatorSectionR ctx op opp = do
-    ws <- getConfig (cfgOpWs ctx op . cfgOp)
+    withinDeclaration <- gets psWithinDeclaration
+    ws <- getConfig (cfgOpWs' ctx (Just withinDeclaration) op . cfgOp)
     opp
     when (wsSpace After ws) space
 
