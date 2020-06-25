@@ -736,12 +736,14 @@ prettyBinds binds = withIndentBy cfgIndentWhere True $ do
     withIndent cfgIndentWhereBinds True $ pretty binds
 
 instance Pretty Module where
-    prettyPrint (Module _ mhead pragmas imports decls) = inter blankline $
-        catMaybes [ ifNotEmpty prettyPragmas pragmas
-                  , pretty <$> mhead
-                  , ifNotEmpty prettyImports imports
-                  , ifNotEmpty (prettyDecls skipBlankDecl DeclModule) decls
-                  ]
+    prettyPrint (Module _ mhead pragmas imports decls) =
+        within ModuleDeclaration $
+          inter blankline $
+            catMaybes [ ifNotEmpty prettyPragmas pragmas
+                      , pretty <$> mhead
+                      , ifNotEmpty prettyImports imports
+                      , ifNotEmpty (prettyDecls skipBlankDecl DeclModule) decls
+                      ]
       where
         ifNotEmpty f xs = if null xs then Nothing else Just (f xs)
 
