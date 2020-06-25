@@ -318,8 +318,9 @@ listV :: (Annotated ast, Pretty ast)
       -> [ast NodeInfo]
       -> Printer ()
 listV ctx open close sep xs = groupV ctx open close $ do
-    ws <- getConfig (cfgOpWs ctx sep . cfgOp)
-    ws' <- getConfig (cfgGroupWs ctx open . cfgGroup)
+    withinDeclaration <- gets psWithinDeclaration
+    ws <- getConfig (cfgOpWs' ctx (Just withinDeclaration) sep . cfgOp)
+    ws' <- getConfig (cfgGroupWs' ctx (Just withinDeclaration) open . cfgGroup)
     unless (wsLinebreak Before ws' || wsSpace After ws' || wsLinebreak After ws
             || not (wsSpace After ws))
            space
@@ -385,7 +386,8 @@ listAutoWrap' :: (Annotated ast, Pretty ast)
               -> Printer ()
 listAutoWrap' _ _ [] = return ()
 listAutoWrap' ctx sep (x : xs) = aligned $ do
-    ws <- getConfig (cfgOpWs ctx sep . cfgOp)
+    withinDeclaration <- gets psWithinDeclaration
+    ws <- getConfig (cfgOpWs' ctx (Just withinDeclaration) sep . cfgOp)
     let correction = if wsLinebreak After ws
                      then 0
                      else BS.length sep + if wsSpace After ws then 1 else 0
