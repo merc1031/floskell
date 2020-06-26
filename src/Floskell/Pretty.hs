@@ -1431,6 +1431,15 @@ instance Pretty Rhs where
     prettyPrint (UnGuardedRhs _ expr@(Let {})) = do
         letSpecialization <- getConfig (cfgOptionLetSpecialization . cfgOptions)
         prettyUnGuardedRHS Other letSpecialization expr
+    prettyPrint (UnGuardedRhs _ expr@(ListComp {})) = do
+        listCompSpecialization <- getConfig (cfgOptionListCompSpecialization . cfgOptions)
+        prettyUnGuardedRHS Other listCompSpecialization expr
+    prettyPrint (UnGuardedRhs _ expr@(ParComp {})) = do
+        listCompSpecialization <- getConfig (cfgOptionListCompSpecialization . cfgOptions)
+        prettyUnGuardedRHS Other listCompSpecialization expr
+    prettyPrint (UnGuardedRhs _ expr@(ParArrayComp {})) = do
+        listCompSpecialization <- getConfig (cfgOptionListCompSpecialization . cfgOptions)
+        prettyUnGuardedRHS Other listCompSpecialization expr
     prettyPrint (UnGuardedRhs _ expr) =
         prettyUnGuardedRHS Other False expr
 

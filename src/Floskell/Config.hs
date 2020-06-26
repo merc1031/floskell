@@ -284,34 +284,36 @@ data DeclarationConstruct = DeclModule | DeclClass | DeclInstance | DeclWhere
     deriving ( Eq, Ord, Generic )
 
 data OptionConfig =
-    OptionConfig { cfgOptionSortPragmas           :: !Bool
-                 , cfgOptionSplitLanguagePragmas  :: !Bool
-                 , cfgOptionSortImports           :: !SortImportsRule
-                 , cfgOptionSortImportLists       :: !Bool
-                 , cfgOptionAlignSumTypeDecl      :: !Bool
-                 , cfgOptionFlexibleOneline       :: !Bool
-                 , cfgOptionPreserveVerticalSpace :: !Bool
-                 , cfgOptionMultiIfPadding        :: !Bool
-                 , cfgOptionLetSpecialization     :: !Bool
-                 , cfgOptionLetDoSpecialization   :: !Bool
-                 , cfgOptionLetInPadding          :: !(Bool, Bool)
-                 , cfgOptionDeclNoBlankLines      :: !(Set DeclarationConstruct)
+    OptionConfig { cfgOptionSortPragmas                 :: !Bool
+                 , cfgOptionSplitLanguagePragmas        :: !Bool
+                 , cfgOptionSortImports                 :: !SortImportsRule
+                 , cfgOptionSortImportLists             :: !Bool
+                 , cfgOptionAlignSumTypeDecl            :: !Bool
+                 , cfgOptionFlexibleOneline             :: !Bool
+                 , cfgOptionPreserveVerticalSpace       :: !Bool
+                 , cfgOptionMultiIfPadding              :: !Bool
+                 , cfgOptionLetSpecialization           :: !Bool
+                 , cfgOptionLetDoSpecialization         :: !Bool
+                 , cfgOptionLetInPadding                :: !(Bool, Bool)
+                 , cfgOptionListCompSpecialization      :: !Bool
+                 , cfgOptionDeclNoBlankLines            :: !(Set DeclarationConstruct)
                  }
     deriving ( Generic )
 
 instance Default OptionConfig where
-    def = OptionConfig { cfgOptionSortPragmas           = False
-                       , cfgOptionSplitLanguagePragmas  = False
-                       , cfgOptionSortImports           = NoImportSort
-                       , cfgOptionSortImportLists       = False
-                       , cfgOptionAlignSumTypeDecl      = False
-                       , cfgOptionFlexibleOneline       = False
-                       , cfgOptionPreserveVerticalSpace = False
-                       , cfgOptionMultiIfPadding        = False
-                       , cfgOptionLetSpecialization     = False
-                       , cfgOptionLetDoSpecialization   = False
-                       , cfgOptionLetInPadding          = (True, True)
-                       , cfgOptionDeclNoBlankLines      = Set.empty
+    def = OptionConfig { cfgOptionSortPragmas                 = False
+                       , cfgOptionSplitLanguagePragmas        = False
+                       , cfgOptionSortImports                 = NoImportSort
+                       , cfgOptionSortImportLists             = False
+                       , cfgOptionAlignSumTypeDecl            = False
+                       , cfgOptionFlexibleOneline             = False
+                       , cfgOptionPreserveVerticalSpace       = False
+                       , cfgOptionMultiIfPadding              = False
+                       , cfgOptionLetSpecialization           = False
+                       , cfgOptionLetDoSpecialization         = False
+                       , cfgOptionLetInPadding                = (True, True)
+                       , cfgOptionListCompSpecialization      = False
+                       , cfgOptionDeclNoBlankLines            = Set.empty
                        }
 
 data Config = Config { cfgPenalty :: !PenaltyConfig
