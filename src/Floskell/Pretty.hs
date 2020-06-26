@@ -1201,10 +1201,9 @@ instance Pretty ClassDecl where
 
     prettyPrint (ClsTyDef _ typeeqn) = depend "type" $ pretty typeeqn
 
-    prettyPrint (ClsDefSig _ name ty) = do
-        write "default"
-        space
-        prettyTypesig Declaration [ name ] ty
+    prettyPrint (ClsDefSig _ name ty) =
+        within TypeDeclaration $
+          depend "default" $ prettyTypesig Declaration [ name ] ty
 
 instance Pretty InstDecl where
     prettyPrint (InsDecl _ decl) = pretty decl
