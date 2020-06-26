@@ -27,6 +27,7 @@ module Floskell.Config
     , Config(..)
     , defaultConfig
     , safeConfig
+    , simpleWithinLayout
     , cfgMapFind
     , cfgOpWs
     , cfgGroupWs
@@ -63,6 +64,9 @@ data LayoutContext = Declaration | Type | Pattern | Expression | Other
 
 data WithinDeclaration = ModuleDeclaration
                        | RecordDeclaration
+                       | GADTDeclaration
+                       | GADTFieldDeclaration
+                       | GADTFieldTypeDeclaration
                        | TypeDeclaration
                        | ComprehensionDeclaration
                        | SpecialDeclaration
@@ -150,6 +154,7 @@ data IndentConfig =
                  , cfgIndentLetBinds :: !Indent
                  , cfgIndentLetIn :: !Indent
                  , cfgIndentMultiIf :: !Indent
+                 , cfgIndentSimpleDeclaration :: !Indent
                  , cfgIndentTypesig :: !Indent
                  , cfgIndentWhereBinds :: !Indent
                  }
@@ -171,6 +176,7 @@ instance Default IndentConfig where
                        , cfgIndentLetBinds = IndentBy 4
                        , cfgIndentLetIn = IndentBy 4
                        , cfgIndentMultiIf = IndentBy 4
+                       , cfgIndentSimpleDeclaration = AlignOrIndentBy 4
                        , cfgIndentTypesig = IndentBy 4
                        , cfgIndentWhereBinds = IndentBy 2
                        }
@@ -178,12 +184,30 @@ instance Default IndentConfig where
 data WithinLayout
   = WithinLayout { wlModuleLayout :: !Layout
                  , wlRecordLayout :: !Layout
+                 , wlGADTLayout :: !Layout
+                 , wlGADTFieldLayout :: !Layout
+                 , wlGADTFieldTypeLayout :: !Layout
                  , wlTypeLayout :: !Layout
                  , wlSpecialLayout :: !Layout
                  , wlComprehensionLayout :: !Layout
                  , wlOtherLayout :: !Layout
                  }
     deriving ( Generic )
+
+instance Default WithinLayout where
+    def = simpleWithinLayout Flex
+
+simpleWithinLayout :: Layout -> WithinLayout
+simpleWithinLayout layout = WithinLayout { wlModuleLayout = layout
+                                         , wlRecordLayout = layout
+                                         , wlGADTLayout = layout
+                                         , wlGADTFieldLayout = layout
+                                         , wlGADTFieldTypeLayout = layout
+                                         , wlTypeLayout = layout
+                                         , wlSpecialLayout = layout
+                                         , wlComprehensionLayout = layout
+                                         , wlOtherLayout = layout
+                                         }
 
 data LayoutConfig =
     LayoutConfig { cfgLayoutApp :: !Layout
@@ -215,7 +239,7 @@ instance Default LayoutConfig where
                        , cfgLayoutList = Flex
                        , cfgLayoutRecord = Flex
                        , cfgLayoutConstraints = Flex
-                       , cfgLayoutType = WithinLayout Flex Flex Flex Flex Flex Flex
+                       , cfgLayoutType = def
                        }
 
 newtype OpConfig = OpConfig { unOpConfig :: ConfigMap Whitespace }
@@ -481,6 +505,9 @@ textToLayout _ = Nothing
 withinToText :: WithinDeclaration -> T.Text
 withinToText ModuleDeclaration = "module"
 withinToText RecordDeclaration = "record"
+withinToText GADTDeclaration = "gadt"
+withinToText GADTFieldDeclaration = "gadt_field"
+withinToText GADTFieldTypeDeclaration = "gadt_field_type"
 withinToText TypeDeclaration = "type"
 withinToText ComprehensionDeclaration = "comprehension"
 withinToText SpecialDeclaration = "special"
@@ -489,6 +516,9 @@ withinToText OtherDeclaration = "other"
 textToWithin :: T.Text -> Maybe WithinDeclaration
 textToWithin "module" = Just ModuleDeclaration
 textToWithin "record" = Just RecordDeclaration
+textToWithin "gadt" = Just GADTDeclaration
+textToWithin "gadt_field" = Just GADTFieldDeclaration
+textToWithin "gadt_field_type" = Just GADTFieldDeclaration
 textToWithin "type" = Just TypeDeclaration
 textToWithin "comprehension" = Just ComprehensionDeclaration
 textToWithin "special" = Just SpecialDeclaration
@@ -596,13 +626,7 @@ instance ToJSON WithinLayout where
 instance FromJSON WithinLayout where
     parseJSON v@(JSON.String {}) = do
         layout <- parseJSON v
-        pure WithinLayout { wlModuleLayout = layout
-                          , wlRecordLayout = layout
-                          , wlTypeLayout = layout
-                          , wlSpecialLayout = layout
-                          , wlComprehensionLayout = layout
-                          , wlOtherLayout = layout
-                          }
+        pure $ simpleWithinLayout layout
 
     parseJSON o = genericParseJSON (recordOptions 2) o
 

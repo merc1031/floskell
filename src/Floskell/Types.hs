@@ -15,6 +15,7 @@ module Floskell.Types
     , psColumn
     , psNewline
     , within
+    , nestTypeLevel
     , initialPrintState
     , Config(..)
     , SrcSpan(..)
@@ -88,6 +89,7 @@ data PrintState =
                , psOutputRestriction :: !OutputRestriction
                , psTypeLayout :: !TypeLayout
                , psWithinDeclaration :: !WithinDeclaration
+               , psTypeNestLevel :: !Int
                }
 
 psLine :: PrintState -> Int
@@ -101,7 +103,7 @@ psNewline = (== 0) . Buffer.column . psBuffer
 
 initialPrintState :: Config -> PrintState
 initialPrintState config =
-    PrintState Buffer.empty 0 0 Map.empty config False Anything TypeFree OtherDeclaration
+    PrintState Buffer.empty 0 0 Map.empty config False Anything TypeFree OtherDeclaration 0
 
 within :: WithinDeclaration -> Printer a -> Printer a
 within w f = do
@@ -109,6 +111,14 @@ within w f = do
   modify' $ \s -> s { psWithinDeclaration = w }
   r <- f
   modify' $ \s -> s { psWithinDeclaration = oldWithin }
+  pure r
+
+nestTypeLevel :: Printer a -> Printer a
+nestTypeLevel f = do
+  lvl <- gets psTypeNestLevel
+  modify' $ \s -> s { psTypeNestLevel = lvl + 1 }
+  r <- f
+  modify' $ \s -> s { psTypeNestLevel = lvl }
   pure r
 
 data CommentType = InlineComment | LineComment | PreprocessorDirective
