@@ -1106,14 +1106,16 @@ instance Pretty Decl where
             mayM_ msafety $ withPrefix space pretty
             mayM_ mstring $ withPrefix space (string . show)
             space
-            prettyTypesig Declaration [ name ] ty
+            within TypeDeclaration $
+                prettyTypesig Declaration [ name ] ty
 
     prettyPrint (ForExp _ callconv mstring name ty) =
         depend "foreign export" $ do
             pretty callconv
             mayM_ mstring $ withPrefix space (string . show)
             space
-            prettyTypesig Declaration [ name ] ty
+            within TypeDeclaration $
+                prettyTypesig Declaration [ name ] ty
 
     prettyPrint (RulePragmaDecl _ rules) =
         if null rules
