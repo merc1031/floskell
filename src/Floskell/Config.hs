@@ -70,6 +70,7 @@ data WithinDeclaration = ModuleDeclaration
                        | TypeDeclaration
                        | ComprehensionDeclaration
                        | SpecialDeclaration
+                       | PatternDeclaration
                        | OtherDeclaration
     deriving ( Eq, Ord, Bounded, Enum, Show, Generic )
 
@@ -154,6 +155,7 @@ data IndentConfig =
                  , cfgIndentLetBinds :: !Indent
                  , cfgIndentLetIn :: !Indent
                  , cfgIndentMultiIf :: !Indent
+                 , cfgIndentPatternsig :: !Indent
                  , cfgIndentSimpleDeclaration :: !Indent
                  , cfgIndentTypesig :: !Indent
                  , cfgIndentWhereBinds :: !Indent
@@ -176,6 +178,7 @@ instance Default IndentConfig where
                        , cfgIndentLetBinds = IndentBy 4
                        , cfgIndentLetIn = IndentBy 4
                        , cfgIndentMultiIf = IndentBy 4
+                       , cfgIndentPatternsig = IndentBy 4
                        , cfgIndentSimpleDeclaration = AlignOrIndentBy 4
                        , cfgIndentTypesig = IndentBy 4
                        , cfgIndentWhereBinds = IndentBy 2
@@ -189,6 +192,7 @@ data WithinLayout
                  , wlGADTFieldTypeLayout :: !Layout
                  , wlTypeLayout :: !Layout
                  , wlSpecialLayout :: !Layout
+                 , wlPatternLayout :: !Layout
                  , wlComprehensionLayout :: !Layout
                  , wlOtherLayout :: !Layout
                  }
@@ -205,6 +209,7 @@ simpleWithinLayout layout = WithinLayout { wlModuleLayout = layout
                                          , wlGADTFieldTypeLayout = layout
                                          , wlTypeLayout = layout
                                          , wlSpecialLayout = layout
+                                         , wlPatternLayout = layout
                                          , wlComprehensionLayout = layout
                                          , wlOtherLayout = layout
                                          }
@@ -221,6 +226,7 @@ data LayoutConfig =
                  , cfgLayoutListComp :: !Layout
                  , cfgLayoutList :: !Layout
                  , cfgLayoutRecord :: !Layout
+                 , cfgLayoutPatternSynonym :: !Layout
                  , cfgLayoutConstraints :: !Layout
                  , cfgLayoutType :: !WithinLayout
                  }
@@ -238,6 +244,7 @@ instance Default LayoutConfig where
                        , cfgLayoutListComp = Flex
                        , cfgLayoutList = Flex
                        , cfgLayoutRecord = Flex
+                       , cfgLayoutPatternSynonym = Flex
                        , cfgLayoutConstraints = Flex
                        , cfgLayoutType = def
                        }
@@ -511,6 +518,7 @@ withinToText GADTFieldTypeDeclaration = "gadt_field_type"
 withinToText TypeDeclaration = "type"
 withinToText ComprehensionDeclaration = "comprehension"
 withinToText SpecialDeclaration = "special"
+withinToText PatternDeclaration = "pattern"
 withinToText OtherDeclaration = "other"
 
 textToWithin :: T.Text -> Maybe WithinDeclaration
@@ -522,6 +530,7 @@ textToWithin "gadt_field_type" = Just GADTFieldDeclaration
 textToWithin "type" = Just TypeDeclaration
 textToWithin "comprehension" = Just ComprehensionDeclaration
 textToWithin "special" = Just SpecialDeclaration
+textToWithin "pattern" = Just PatternDeclaration
 textToWithin "other" = Just OtherDeclaration
 textToWithin _ = Nothing
 
