@@ -1890,14 +1890,16 @@ instance Pretty Exp where
         pretty expr
 
     prettyPrint (RecConstr _ qname fieldupdates) =
-        prettyRecord len Expression qname fieldupdates
+        within RecordDeclaration $
+            prettyRecord len Expression qname fieldupdates
       where
         len (FieldUpdate _ n _) = measure $ pretty n
         len (FieldPun _ n) = measure $ pretty n
         len (FieldWildcard _) = measure $ write ".."
 
     prettyPrint (RecUpdate _ expr fieldupdates) =
-        prettyRecord len Expression expr fieldupdates
+        within RecordDeclaration $
+            prettyRecord len Expression expr fieldupdates
       where
         len (FieldUpdate _ n _) = measure $ pretty n
         len (FieldPun _ n) = measure $ pretty n
