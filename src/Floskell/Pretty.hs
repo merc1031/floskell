@@ -922,22 +922,25 @@ instance Pretty Decl where
           depend "type" $ prettySimpleDecl declhead "=" ty
 
     prettyPrint (TypeFamDecl _ declhead mresultsig minjectivityinfo) =
-        depend "type family" $ do
-            pretty declhead
-            mayM_ mresultsig pretty
-            mayM_ minjectivityinfo pretty
+        within TypeDeclaration $
+            depend "type family" $ do
+                pretty declhead
+                mayM_ mresultsig pretty
+                mayM_ minjectivityinfo pretty
 
     prettyPrint (ClosedTypeFamDecl _
                                    declhead
                                    mresultsig
                                    minjectivityinfo
-                                   typeeqns) = depend "type family" $ do
-        pretty declhead
-        mayM_ mresultsig pretty
-        mayM_ minjectivityinfo pretty
-        write " where"
-        newline
-        linedOnside typeeqns
+                                   typeeqns) =
+        within TypeDeclaration $
+            depend "type family" $ do
+                pretty declhead
+                mayM_ mresultsig pretty
+                mayM_ minjectivityinfo pretty
+                write " where"
+                newline
+                linedOnside typeeqns
 
     prettyPrint (DataDecl _ dataornew mcontext declhead qualcondecls derivings) = do
         within RecordDeclaration $ do
