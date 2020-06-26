@@ -652,12 +652,19 @@ prettyTypesig :: (Annotated ast, Pretty ast)
               -> [ast NodeInfo]
               -> Type NodeInfo
               -> Printer ()
-prettyTypesig ctx names ty = do
+prettyTypesig ctx names ty = prettyTypesig' ctx names (pretty ty)
+
+prettyTypesig' :: (Annotated ast, Pretty ast)
+               => LayoutContext
+               -> [ast NodeInfo]
+               -> Printer ()
+               -> Printer ()
+prettyTypesig' ctx names p = do
     inter comma $ map pretty names
     atTabStop stopRecordField
     withIndentConfig cfgIndentTypesig align indentby
   where
-    align = onside . alignOnOperator ctx "::" $ pretty ty
+    align = onside . alignOnOperator ctx "::" $ p
 
     indentby i = indented i $ do
         operator ctx "::"
@@ -665,7 +672,7 @@ prettyTypesig ctx names ty = do
         when nl $ do
             delta <- listVOpLen ctx "->"
             write $ BS.replicate delta 32
-        pretty ty
+        p
 
 prettyForallAdv :: ( Annotated ast
                    , Pretty ast
@@ -1143,19 +1150,22 @@ instance Pretty Decl where
             mayM_ mactivation $ withPostfix space pretty
             pretty qname
 
-    prettyPrint (SpecSig _ mactivation qname types) =
+    prettyPrint (SpecSig _ mactivation qname types) = do
+        pTraceM $ "Specialize " <> show (mactivation, qname, types)
         prettyPragma "SPECIALISE" $ do
             mayM_ mactivation $ withPostfix space pretty
-            pretty qname
-            operator Declaration "::"
-            inter comma $ map pretty types
+            within TypeDeclaration $
+                onside $
+                    prettyTypesig' Declaration [qname] $
+                        inter (withOperatorFormatting Declaration "specialize_comma" (write ", ") id) $ map pretty types
 
     prettyPrint (SpecInlineSig _ inline mactivation qname types) =
         prettyPragma name $ do
             mayM_ mactivation $ withPostfix space pretty
-            pretty qname
-            operator Declaration "::"
-            inter comma $ map pretty types
+            within TypeDeclaration $
+                onside $
+                    prettyTypesig' Declaration [qname] $
+                        inter (withOperatorFormatting Declaration "specialize_comma" (write ", ") id) $ map pretty types
       where
         name = if inline then "SPECIALISE INLINE" else "SPECIALISE NOINLINE"
 
