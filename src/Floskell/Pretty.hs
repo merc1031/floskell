@@ -657,6 +657,72 @@ prettyTypesig ctx names ty = do
             write $ BS.replicate delta 32
         pretty ty
 
+prettyForallAdv :: ( Annotated ast
+                   , Pretty ast
+                   )
+                => Maybe [ast NodeInfo]
+                -> Maybe (Context NodeInfo)
+                -> Maybe [ast NodeInfo]
+                -> Maybe (Context NodeInfo)
+                -> Printer a
+                -> Printer a
+prettyForallAdv mtyvarbinds mcontext mtyvarbinds' mcontext' p = do
+    layout <- getConfig (cfgLayoutConstraints . cfgLayout)
+    let listy = case layout of
+          Flex -> list
+          Vertical -> listV
+          TryOneline -> listH
+
+    prettyForallContext listy mtyvarbinds mcontext
+    prettyForallContext listy mtyvarbinds' mcontext'
+    within OtherDeclaration $
+      p
+  where
+    prettyForallContext layoutCt mtvb mct = do
+      forM_ mtvb $ \tyvarbinds -> do
+          write "forall "
+          inter space $ map pretty tyvarbinds
+          withOperatorFormattingV Type "." (write "." >> space) id
+      forM_ mct $ \context -> do
+          case context of
+              (CxSingle _ asst) -> pretty asst
+              (CxTuple _ assts) -> layoutCt Type "(" ")" "," assts
+              (CxEmpty _) -> write "()"
+          operatorV Type "=>"
+
+prettyGADT :: ( Foldable f
+              , Foldable f1
+              )
+           => DataOrNew NodeInfo
+           -> f (Printer ())
+           -> Either (Maybe (Context NodeInfo), DeclHead NodeInfo) (Type NodeInfo)
+           -> Maybe (Kind NodeInfo)
+           -> [GadtDecl NodeInfo]
+           -> f1 (Deriving NodeInfo)
+           -> Printer ()
+prettyGADT dataornew
+           mheadAfter
+           mcontextAndDeclheadOrType
+           mkind
+           gadtdecls
+           derivings =
+        within GADTDeclaration $ do
+          depend' (pretty dataornew >> sequence_ mheadAfter) $ do
+              -- LLRM traceM $ ("In Gadt " <> show mkind)
+              case mcontextAndDeclheadOrType of
+                Left (mcontext, declhead) -> do
+                  mapM_ pretty mcontext
+                  pretty declhead
+                Right ty -> pretty ty
+              mayM_ mkind $ \kind -> do
+                  operator Declaration "::"
+                  pretty kind
+              write " where"
+              newline
+              within GADTFieldDeclaration $
+                  linedOnside gadtdecls
+          mapM_ pretty derivings
+
 prettyApp :: (Annotated ast1, Annotated ast2, Pretty ast1, Pretty ast2)
           => ast1 NodeInfo
           -> [ast2 NodeInfo]
@@ -876,19 +942,7 @@ instance Pretty Decl where
                            mkind
                            gadtdecls
                            derivings) =
-        within GADTDeclaration $ do
-          depend' (pretty dataornew) $ do
-              traceM $ ("In Gadt " <> show mkind)
-              mapM_ pretty mcontext
-              pretty declhead
-              mayM_ mkind $ \kind -> do
-                  operator Declaration "::" -- This is not the same as a type declaration... its a record declaration
-                  pretty kind
-              write " where"
-              newline
-              within GADTFieldDeclaration $
-                  linedOnside gadtdecls
-          mapM_ pretty derivings
+        prettyGADT dataornew Nothing (Left (mcontext, declhead)) mkind gadtdecls derivings
 
     prettyPrint (DataFamDecl _ mcontext declhead mresultsig) =
         depend "data family" $ do
@@ -899,22 +953,15 @@ instance Pretty Decl where
     prettyPrint (TypeInsDecl _ ty ty') =
         depend "type instance" $ prettySimpleDecl ty "=" ty'
 
-    prettyPrint (DataInsDecl _ dataornew ty qualcondecls derivings) = do
-        depend' (pretty dataornew >> write " instance") $ do
-            pretty ty
-            prettyConDecls qualcondecls
-        mapM_ pretty derivings
+    prettyPrint (DataInsDecl _ dataornew ty qualcondecls derivings) =
+        within RecordDeclaration $ do
+            depend' (pretty dataornew >> write " instance") $ do
+                pretty ty
+                prettyConDecls qualcondecls
+            mapM_ pretty derivings
 
-    prettyPrint (GDataInsDecl _ dataornew ty mkind gadtdecls derivings) = do
-        depend' (pretty dataornew >> write " instance") $ do
-            pretty ty
-            mayM_ mkind $ \kind -> do
-                operator Declaration "::"
-                pretty kind
-            write " where"
-            newline
-            linedOnside gadtdecls
-        mapM_ pretty derivings
+    prettyPrint (GDataInsDecl _ dataornew ty mkind gadtdecls derivings) =
+        prettyGADT dataornew (Just $ write " instance") (Right ty) mkind gadtdecls derivings
 
     prettyPrint (ClassDecl _ mcontext declhead fundeps mclassdecls) = do
         depend "class" $ do
@@ -982,33 +1029,38 @@ instance Pretty Decl where
                            mcontext
                            mtyvarbinds'
                            mcontext'
-                           ty) = depend "pattern" $ do
-        inter comma $ map pretty names
-        operator Declaration "::"
-        mapM_ prettyForall mtyvarbinds
-        mayM_ mcontext pretty
-        mapM_ prettyForall mtyvarbinds'
-        mayM_ mcontext' pretty
-        pretty ty
+                           ty) =
+        let p = prettyForallAdv mtyvarbinds mcontext mtyvarbinds' mcontext' (pretty ty)
+
+        in within TypeDeclaration $
+            depend "pattern" $ do
+                inter comma $ map pretty names
+                withIndentConfig cfgIndentPatternsig (align p) (indentby p)
 #elif MIN_VERSION_haskell_src_exts(1,20,0)
     prettyPrint (PatSynSig _ names mtyvarbinds mcontext mcontext' ty) =
-        depend "pattern" $ do
-            inter comma $ map pretty names
-            operator Declaration "::"
-            mapM_ prettyForall mtyvarbinds
-            mayM_ mcontext pretty
-            mayM_ mcontext' pretty
-            pretty ty
+        let p = prettyForallAdv mtyvarbinds mcontext Nothing mcontext' (pretty ty)
+        in within TypeDeclaration $
+            depend "pattern" $ do
+                inter comma $ map pretty names
+                withIndentConfig cfgIndentPatternsig (align p) (indentby p)
 #else
     prettyPrint (PatSynSig _ name mtyvarbinds mcontext mcontext' ty) =
-        depend "pattern" $ do
-            pretty name
-            operator Declaration "::"
-            mapM_ prettyForall mtyvarbinds
-            mayM_ mcontext pretty
-            mayM_ mcontext' pretty
-            pretty ty
+        let p = prettyForallAdv mtyvarbinds mcontext Nothing mcontext' (pretty ty)
+        in within TypeDeclaration $
+            depend "pattern" $ do
+                pretty name
+                withIndentConfig cfgIndentPatternsig (align p) (indentby p)
 #endif
+        where
+          align p = alignOnOperator Declaration "::" p
+
+          indentby p i = indentedBy i $ do
+              operator Declaration "::"
+              nl <- gets psNewline
+              when nl $ do
+                  delta <- listVOpLen Declaration "->"
+                  write $ BS.replicate delta 32
+              p
 
     prettyPrint (FunBind _ matches) =
         withComputedTabStop stopRhs cfgAlignMatches measureMatch matches $
@@ -1021,11 +1073,15 @@ instance Pretty Decl where
             pretty rhs
         mapM_ prettyBinds mbinds
 
-    prettyPrint (PatSyn _ pat pat' patternsyndirection) = do
-        depend "pattern" $ prettySimpleDecl pat sep pat'
-        case patternsyndirection of
-            ExplicitBidirectional _ decls -> prettyBinds (BDecls noNodeInfo decls)
-            _ -> return ()
+    prettyPrint (PatSyn _ pat pat' patternsyndirection) =
+        within PatternDeclaration $ do
+            depend "pattern" $  do
+              pretty pat
+              withLayout cfgLayoutPatternSynonym (operator Declaration sep) (operatorV Declaration sep)
+              pretty pat'
+            case patternsyndirection of
+                ExplicitBidirectional _ decls -> prettyBinds (BDecls noNodeInfo decls)
+                _ -> return ()
       where
         sep = case patternsyndirection of
             ImplicitBidirectional -> "="
@@ -1562,24 +1618,8 @@ instance Pretty Type where
             write "*"
 #endif
 
-        prettyV (TyForall _ mtyvarbinds mcontext ty) = do
-            forM_ mtyvarbinds $ \tyvarbinds -> do
-                write "forall "
-                inter space $ map pretty tyvarbinds
-                withOperatorFormattingV Type "." (write "." >> space) id
-            layout <- getConfig (cfgLayoutConstraints . cfgLayout)
-            let listy = case layout of
-                  Flex -> list
-                  Vertical -> listV
-                  TryOneline -> listH
-            forM_ mcontext $ \context -> do
-                case context of
-                    (CxSingle _ asst) -> pretty asst
-                    (CxTuple _ assts) -> listy Type "(" ")" "," assts
-                    (CxEmpty _) -> write "()"
-                operatorV Type "=>"
-            within OtherDeclaration $
-              prettyV ty
+        prettyV (TyForall _ mtyvarbinds mcontext ty) =
+            prettyForallAdv mtyvarbinds mcontext Nothing Nothing (prettyV ty)
 
         prettyV (TyFun _ ty ty') = do
             lvl <- gets psTypeNestLevel
