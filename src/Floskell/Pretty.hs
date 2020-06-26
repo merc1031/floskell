@@ -1279,7 +1279,7 @@ instance Pretty QualConDecl where
 
 instance Pretty GadtDecl where
 #if MIN_VERSION_haskell_src_exts(1,21,0)
-    prettyPrint dbg@(GadtDecl _ name _ _ mfielddecls ty) = do
+    prettyPrint (GadtDecl _ name _ _ mfielddecls ty) = do
         pretty name
         operator Declaration "::" -- for gadt this is 2nd :: and then in the decl can be more ::
         -- Make this configurable somehow?
@@ -1288,10 +1288,8 @@ instance Pretty GadtDecl where
                 prettyRecordFields len Declaration decls
                 newline
             operator Type "->"
-        within GADTFieldTypeDeclaration $ do
-            pTraceM $ "GADT Type Start " <> show dbg
+        within GADTFieldTypeDeclaration $
             pretty ty
-            pTraceM $ "GADT Type End " <> show dbg
 #else
     prettyPrint (GadtDecl _ name mfielddecls ty) = do
         pretty name
@@ -1439,11 +1437,15 @@ instance Pretty Type where
     prettyPrint t = do
         layout <- gets psTypeLayout
         withinDeclaration <- gets psWithinDeclaration
-        traceM $ "In outer type or kind " <> show (layout, withinDeclaration, t)
-        case layout of
-            TypeFree -> withLayout (withinDeclToLayout withinDeclaration . cfgLayoutType) flex vertical
-            TypeFlex -> prettyF t
-            TypeVertical -> prettyV t
+        nestTypeLevel $ do
+          lvl <- gets psTypeNestLevel
+          -- traceM $ "In outer type or kind " <> show (layout, withinDeclaration, t, lvl)
+          case lvl of
+              1 -> case layout of
+                  TypeFree -> withLayout (withinDeclToLayout withinDeclaration . cfgLayoutType) flex vertical
+                  TypeFlex -> prettyF t
+                  TypeVertical -> prettyV t
+              _ -> prettyF t
       where
         flex = withTypeLayout TypeFlex $ prettyF t
 
@@ -1456,36 +1458,33 @@ instance Pretty Type where
             p
             modify $ \s -> s { psTypeLayout = layout }
 
-        prettyF dbg@(TyForall _ mtyvarbinds mcontext ty) = do
-            traceM $ "In flex type or kind " <> show dbg
+        prettyF (TyForall _ mtyvarbinds mcontext ty) = do
             mapM_ prettyForall mtyvarbinds
             mapM_ pretty mcontext
             pretty ty
 
-        prettyF dbg@(TyFun _ ty ty') = do
-            traceM $ "In flex type or kind " <> show dbg
+        prettyF (TyFun _ ty ty') = do
+            lvl <- gets psTypeNestLevel
             pretty ty
-            operator Type "->"
+            case lvl of
+                1 -> withOperatorFormatting Type "type-fun-outer" (write "->") id
+                _ -> withOperatorFormattingH Type "type-fun-inner" (write "->") id
             pretty ty'
 
-        prettyF dbg@(TyTuple _ boxed tys) = do
-            traceM $ "In flex type or kind " <> show dbg
+        prettyF (TyTuple _ boxed tys) =
             case boxed of
                 Unboxed -> list Type "(#" "#)" "," tys
                 Boxed -> list Type "(" ")" "," tys
 
 #if MIN_VERSION_haskell_src_exts(1,20,0)
-        prettyF dbg@(TyUnboxedSum _ tys) = do
-            traceM $ "In flex type or kind " <> show dbg
+        prettyF (TyUnboxedSum _ tys) =
             list Type "(#" "#)" "|" tys
 #endif
 
-        prettyF dbg@(TyList _ ty) = do
-            traceM $ "In flex type or kind " <> show dbg
+        prettyF (TyList _ ty) =
             group Type "[" "]" $ pretty ty
 
-        prettyF dbg@(TyParArray _ ty) = do
-            traceM $ "In flex type or kind " <> show dbg
+        prettyF (TyParArray _ ty) =
             group Type "[:" ":]" $ pretty ty
 
         prettyF ty@TyApp{} = case flattenApp flatten ty of
@@ -1495,21 +1494,17 @@ instance Pretty Type where
             flatten (TyApp _ a b) = Just (a, b)
             flatten _ = Nothing
 
-        prettyF dbg@(TyVar _ name) = do
-            traceM $ "In flex type or kind " <> show dbg
+        prettyF (TyVar _ name) =
             pretty name
 
-        prettyF dbg@(TyCon _ qname) = do
-            traceM $ "In flex type or kind " <> show dbg
+        prettyF (TyCon _ qname) =
             pretty qname
 
-        prettyF dbg@(TyParen _ ty) = do
-            traceM $ "In flex type or kind " <> show dbg
+        prettyF (TyParen _ ty) =
             parens . withTypeLayout TypeFree $ pretty ty
 
 #if MIN_VERSION_haskell_src_exts(1,20,0)
-        prettyF dbg@(TyInfix _ ty op ty') = do
-            traceM $ "In flex type or kind " <> show dbg
+        prettyF (TyInfix _ ty op ty') = do
             pretty ty
             withOperatorFormatting Type opname (prettyHSE op) id
             pretty ty'
@@ -1518,45 +1513,37 @@ instance Pretty Type where
                 PromotedName _ qname -> qname
                 UnpromotedName _ qname -> qname
 #else
-        prettyF dbg@(TyInfix _ ty qname ty') = do
-            traceM $ "In flex type or kind " <> show dbg
+        prettyF (TyInfix _ ty qname ty') = do
             pretty ty
             withOperatorFormatting Type (opName' qname) (prettyHSE qname) id
             pretty ty'
 #endif
 
-        prettyF dbg@(TyKind _ ty kind) = do
-            traceM $ "In flex type or kind " <> show dbg
+        prettyF (TyKind _ ty kind) = do
             pretty ty
             operator Type "::"
             pretty kind
 
-        prettyF ty@(TyPromoted _ _promoted) = do
-            traceM $ "In flex type or kind " <> show ty
+        prettyF ty@(TyPromoted _ _promoted) =
             prettyHSE ty
 
-        prettyF dbg@(TyEquals _ ty ty') = do
-            traceM $ "In flex type or kind " <> show dbg
+        prettyF (TyEquals _ ty ty') = do
             pretty ty
             operator Type "~"
             pretty ty'
 
-        prettyF dbg@(TySplice _ splice) = do
-            traceM $ "In flex type or kind " <> show dbg
+        prettyF (TySplice _ splice) =
             pretty splice
 
-        prettyF dbg@(TyBang _ bangtype unpackedness ty) = do
-            traceM $ "In flex type or kind " <> show dbg
+        prettyF (TyBang _ bangtype unpackedness ty) = do
             pretty unpackedness
             pretty bangtype
             pretty ty
 
-        prettyF ty@(TyWildCard _ _mname) = do
-            traceM $ "In flex type or kind " <> show ty
+        prettyF ty@(TyWildCard _ _mname) =
             prettyHSE ty
 
-        prettyF dbg@(TyQuasiQuote _ str str') = do
-            traceM $ "In flex type or kind " <> show dbg
+        prettyF (TyQuasiQuote _ str str') = do
             write "["
             string str
             write "|"
@@ -1564,13 +1551,11 @@ instance Pretty Type where
             write "|]"
 
 #if MIN_VERSION_haskell_src_exts(1,21,0)
-        prettyF dbg@(TyStar _) = do
-            traceM $ "In flex type or kind " <> show dbg
+        prettyF (TyStar _) =
             write "*"
 #endif
 
-        prettyV dbg@(TyForall _ mtyvarbinds mcontext ty) = do
-            traceM $ "In vertical type or kind " <> show dbg
+        prettyV (TyForall _ mtyvarbinds mcontext ty) = do
             forM_ mtyvarbinds $ \tyvarbinds -> do
                 write "forall "
                 inter space $ map pretty tyvarbinds
@@ -1589,14 +1574,15 @@ instance Pretty Type where
             within OtherDeclaration $
               prettyV ty
 
-        prettyV dbg@(TyFun _ ty ty') = do
-            traceM $ "In vertical type or kind " <> show dbg
+        prettyV (TyFun _ ty ty') = do
+            lvl <- gets psTypeNestLevel
             pretty ty
-            operatorV Type "->"
+            case lvl of
+                1 -> withOperatorFormatting Type "type-fun-outer" (write "->") id
+                _ -> withOperatorFormattingH Type "type-fun-inner" (write "->") id
             prettyV ty'
 
-        prettyV ty = do
-            traceM $ "In vertical type or kind " <> show ty
+        prettyV ty =
             prettyF ty
 
 #if !MIN_VERSION_haskell_src_exts(1,21,0)
