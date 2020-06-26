@@ -943,16 +943,19 @@ instance Pretty Decl where
 
 #if MIN_VERSION_haskell_src_exts(1,20,0)
     prettyPrint (DerivDecl _ mderivstrategy moverlap instrule) =
-        depend "deriving" $ do
-            mayM_ mderivstrategy $ withPostfix space pretty
-            write "instance "
-            mayM_ moverlap $ withPostfix space pretty
-            pretty instrule
+        within TypeDeclaration $
+            depend "deriving" $ do
+                mayM_ mderivstrategy $ withPostfix space pretty
+                write "instance "
+                mayM_ moverlap $ withPostfix space pretty
+                pretty instrule
 #else
-    prettyPrint (DerivDecl _ moverlap instrule) = depend "deriving" $ do
-        write "instance "
-        mayM_ moverlap $ withPostfix space pretty
-        pretty instrule
+    prettyPrint (DerivDecl _ moverlap instrule) =
+        within TypeDeclaration $
+            depend "deriving" $ do
+                write "instance "
+                mayM_ moverlap $ withPostfix space pretty
+                pretty instrule
 #endif
 
     prettyPrint (InfixDecl _ assoc mint ops) = onside $ do
