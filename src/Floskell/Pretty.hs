@@ -1914,40 +1914,40 @@ instance Pretty Exp where
         len (FieldPun _ n) = measure $ pretty n
         len (FieldWildcard _) = measure $ write ".."
 
-    prettyPrint (EnumFrom _ expr) = group Expression "[" "]" $ do
+    prettyPrint (EnumFrom _ expr) = withGroup Expression "enum_bracket" "[" "]" $ do
         pretty expr
-        operatorSectionL Expression ".." $ write ".."
+        operatorSectionL Expression "enum_spread" $ write ".."
 
-    prettyPrint (EnumFromTo _ expr expr') = group Expression "[" "]" $ do
+    prettyPrint (EnumFromTo _ expr expr') = withGroup Expression "enum_bracket" "[" "]" $ do
         pretty expr
-        operator Expression ".."
+        withOperatorFormatting Expression "enum_spread" (write "..") id
         pretty expr'
 
-    prettyPrint (EnumFromThen _ expr expr') = group Expression "[" "]" $ do
+    prettyPrint (EnumFromThen _ expr expr') = withGroup Expression "enum_bracket" "[" "]" $ do
         pretty expr
         comma
         pretty expr'
-        operatorSectionL Expression ".." $ write ".."
+        operatorSectionL Expression "enum_spread" $ write ".."
 
     prettyPrint (EnumFromThenTo _ expr expr' expr'') =
-        group Expression "[" "]" $ do
+        withGroup Expression "enum_bracket" "[" "]" $ do
             pretty expr
             comma
             pretty expr'
-            operator Expression ".."
+            withOperatorFormatting Expression "enum_spread" (write "..") id
             pretty expr''
 
-    prettyPrint (ParArrayFromTo _ expr expr') = group Expression "[:" ":]" $ do
+    prettyPrint (ParArrayFromTo _ expr expr') = withGroup Expression "parray_bracket" "[:" ":]" $ do
         pretty expr
-        operator Expression ".."
+        withOperatorFormatting Expression "enum_spread" (write "..") id
         pretty expr'
 
     prettyPrint (ParArrayFromThenTo _ expr expr' expr'') =
-        group Expression "[:" ":]" $ do
+        withGroup Expression "parray_bracket" "[:" ":]" $ do
             pretty expr
             comma
             pretty expr'
-            operator Expression ".."
+            withOperatorFormatting Expression "enum_spread" (write "..") id
             pretty expr''
 
     prettyPrint (ListComp _ expr qualstmts) =

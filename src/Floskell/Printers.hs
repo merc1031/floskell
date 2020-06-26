@@ -44,6 +44,9 @@ module Floskell.Printers
     , group
     , groupH
     , groupV
+    , withGroup
+    , withGroupH
+    , withGroupV
       -- * Operators
     , operator
     , operatorH
@@ -352,36 +355,48 @@ brackets p = do
         p
         write "]"
 
-group :: LayoutContext -> ByteString -> ByteString -> Printer () -> Printer ()
-group ctx open close p = do
+withGroup :: LayoutContext -> ByteString -> ByteString -> ByteString -> Printer () -> Printer ()
+withGroup ctx op open close p = do
     withinDeclaration <- gets psWithinDeclaration
-    force <- getConfig (wsForceLinebreak . cfgGroupWs' ctx (Just withinDeclaration) open . cfgGroup)
+    force <- getConfig (wsForceLinebreak . cfgGroupWs' ctx (Just withinDeclaration) op . cfgGroup)
+    traceM $ "Group " <> show (ctx, withinDeclaration, op, force)
     if force then vert else oneline hor <|> vert
   where
-    hor = groupH ctx open close p
+    hor = withGroupH ctx op open close p
 
-    vert = groupV ctx open close p
+    vert = withGroupV ctx op open close p
 
-groupH :: LayoutContext -> ByteString -> ByteString -> Printer () -> Printer ()
-groupH ctx open close p = do
+withGroupH :: LayoutContext -> ByteString -> ByteString -> ByteString -> Printer () -> Printer ()
+withGroupH ctx op open close p = do
     withinDeclaration <- gets psWithinDeclaration
-    ws <- getConfig (cfgGroupWs' ctx (Just withinDeclaration) open . cfgGroup)
+    ws <- getConfig (cfgGroupWs' ctx (Just withinDeclaration) op . cfgGroup)
+    traceM $ "GroupH " <> show (ctx, withinDeclaration, op, ws)
     write open
     when (wsSpace Before ws) space
     p
     when (wsSpace After ws) space
     write close
 
-groupV :: LayoutContext -> ByteString -> ByteString -> Printer () -> Printer ()
-groupV ctx open close p = aligned $ do
+withGroupV :: LayoutContext -> ByteString -> ByteString -> ByteString -> Printer () -> Printer ()
+withGroupV ctx op open close p = aligned $ do
     withinDeclaration <- gets psWithinDeclaration
-    ws <- getConfig (cfgGroupWs' ctx (Just withinDeclaration) open . cfgGroup)
+    ws <- getConfig (cfgGroupWs' ctx (Just withinDeclaration) op . cfgGroup)
+    traceM $ "GroupV " <> show (ctx, withinDeclaration, op, ws)
     col <- getNextColumn
     write open
     if wsLinebreak Before ws then newline >> when (wsSpace Before ws) space else when (wsSpace Before ws) space
     p
     if wsLinebreak After ws then when (wsSpace After ws) space >> newline else when (wsSpace After ws) space
     column col $ write close
+
+group :: LayoutContext -> ByteString -> ByteString -> Printer () -> Printer ()
+group ctx open = withGroup ctx open open
+
+groupH :: LayoutContext -> ByteString -> ByteString -> Printer () -> Printer ()
+groupH ctx open =  withGroupH ctx open open
+
+groupV :: LayoutContext -> ByteString -> ByteString -> Printer () -> Printer ()
+groupV ctx open = withGroupV ctx open open
 
 operator :: LayoutContext -> ByteString -> Printer ()
 operator ctx op = withOperatorFormatting ctx op (write op) id
