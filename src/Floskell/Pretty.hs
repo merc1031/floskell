@@ -744,7 +744,16 @@ prettyApp :: (Annotated ast1, Annotated ast2, Pretty ast1, Pretty ast2)
           => ast1 NodeInfo
           -> [ast2 NodeInfo]
           -> Printer ()
-prettyApp fn args = withLayout cfgLayoutApp flex vertical
+prettyApp = prettyApp' cfgLayoutApp cfgIndentApp True
+
+prettyApp' :: (Annotated ast1, Annotated ast2, Pretty ast1, Pretty ast2)
+           => (LayoutConfig -> Layout)
+           -> (IndentConfig -> Indent)
+           -> Bool
+           -> ast1 NodeInfo
+           -> [ast2 NodeInfo]
+           -> Printer ()
+prettyApp' cfgLayout cfgIndent pad fn args = withLayout cfgLayout flex vertical
   where
     flex = do
         pretty fn
@@ -754,7 +763,7 @@ prettyApp fn args = withLayout cfgLayoutApp flex vertical
 
     vertical = do
         pretty fn
-        withIndent cfgIndentApp True $ lined args
+        withIndent cfgIndent pad $ lined args
 
 prettyInfixApp
     :: (Annotated ast, Pretty ast, Annotated op, HSE.Pretty (op NodeInfo))
@@ -2148,7 +2157,7 @@ instance Pretty Pat where
             else Nothing
         flattenPInfixApp _ = Nothing
 
-    prettyPrint (PApp _ qname pats) = prettyApp qname pats
+    prettyPrint (PApp _ qname pats) = prettyApp' cfgLayoutPatternApp cfgIndentPatternApp True qname pats
 
     prettyPrint (PTuple _ boxed pats) = case boxed of
         Boxed -> list Pattern "(" ")" "," pats

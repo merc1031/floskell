@@ -155,6 +155,7 @@ data IndentConfig =
                  , cfgIndentLetBinds :: !Indent
                  , cfgIndentLetIn :: !Indent
                  , cfgIndentMultiIf :: !Indent
+                 , cfgIndentPatternApp :: !Indent
                  , cfgIndentPatternsig :: !Indent
                  , cfgIndentSimpleDeclaration :: !Indent
                  , cfgIndentTypesig :: !Indent
@@ -178,6 +179,7 @@ instance Default IndentConfig where
                        , cfgIndentLetBinds = IndentBy 4
                        , cfgIndentLetIn = IndentBy 4
                        , cfgIndentMultiIf = IndentBy 4
+                       , cfgIndentPatternApp = IndentBy 4
                        , cfgIndentPatternsig = IndentBy 4
                        , cfgIndentSimpleDeclaration = AlignOrIndentBy 4
                        , cfgIndentTypesig = IndentBy 4
@@ -226,6 +228,7 @@ data LayoutConfig =
                  , cfgLayoutListComp :: !Layout
                  , cfgLayoutList :: !Layout
                  , cfgLayoutRecord :: !Layout
+                 , cfgLayoutPatternApp :: !Layout
                  , cfgLayoutPatternSynonym :: !Layout
                  , cfgLayoutConstraints :: !Layout
                  , cfgLayoutType :: !WithinLayout
@@ -244,6 +247,7 @@ instance Default LayoutConfig where
                        , cfgLayoutListComp = Flex
                        , cfgLayoutList = Flex
                        , cfgLayoutRecord = Flex
+                       , cfgLayoutPatternApp = Flex
                        , cfgLayoutPatternSynonym = Flex
                        , cfgLayoutConstraints = Flex
                        , cfgLayoutType = def
