@@ -1205,21 +1205,24 @@ instance Pretty InstDecl where
         depend "type" $ prettySimpleDecl ty "=" ty'
 
     prettyPrint (InsData _ dataornew ty qualcondecls derivings) =
-        depend' (pretty dataornew) $ do
-            pretty ty
-            unless (null qualcondecls) $ prettyConDecls qualcondecls
-            mapM_ pretty derivings
+        within RecordDeclaration $
+            depend' (pretty dataornew) $ do
+                pretty ty
+                unless (null qualcondecls) $ prettyConDecls qualcondecls
+                mapM_ pretty derivings
 
     prettyPrint (InsGData _ dataornew ty mkind gadtdecls derivings) = do
-        depend' (pretty dataornew) $ do
-            pretty ty
-            mayM_ mkind $ \kind -> do
-                operator Declaration "::"
-                pretty kind
-            write " where"
-            newline
-            lined gadtdecls
-        mapM_ pretty derivings
+        within GADTDeclaration $ do
+            depend' (pretty dataornew) $ do
+                pretty ty
+                mayM_ mkind $ \kind -> do
+                    operator Declaration "::"
+                    pretty kind
+                write " where"
+                newline
+                within GADTFieldDeclaration $
+                    linedOnside gadtdecls
+            mapM_ pretty derivings
 
 instance Pretty Deriving where
 #if MIN_VERSION_haskell_src_exts(1,20,0)
@@ -1439,7 +1442,7 @@ instance Pretty Type where
         withinDeclaration <- gets psWithinDeclaration
         nestTypeLevel $ do
           lvl <- gets psTypeNestLevel
-          -- traceM $ "In outer type or kind " <> show (layout, withinDeclaration, t, lvl)
+          traceM $ "In outer type or kind " <> show (layout, withinDeclaration, t, lvl)
           case lvl of
               1 -> case layout of
                   TypeFree -> withLayout (withinDeclToLayout withinDeclaration . cfgLayoutType) flex vertical
