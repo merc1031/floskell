@@ -71,6 +71,7 @@ data WithinDeclaration = ModuleDeclaration
                        | ComprehensionDeclaration
                        | SpecialDeclaration
                        | PatternDeclaration
+                       | GuardDeclaration
                        | OtherDeclaration
     deriving ( Eq, Ord, Bounded, Enum, Show, Generic )
 
@@ -121,6 +122,7 @@ data AlignConfig =
                 , cfgAlignImportAsMin  :: !(Maybe Int)
                 , cfgAlignLetBinds     :: !Bool
                 , cfgAlignMatches      :: !Bool
+                , cfgAlignMultiIfRhs   :: !Bool
                 , cfgAlignRecordFields :: !Bool
                 , cfgAlignWhere        :: !Bool
                 }
@@ -135,6 +137,7 @@ instance Default AlignConfig where
                       , cfgAlignImportAsMin  = Nothing
                       , cfgAlignLetBinds     = False
                       , cfgAlignMatches      = False
+                      , cfgAlignMultiIfRhs   = False
                       , cfgAlignRecordFields = False
                       , cfgAlignWhere        = False
                       }
@@ -195,6 +198,7 @@ data WithinLayout
                  , wlTypeLayout :: !Layout
                  , wlSpecialLayout :: !Layout
                  , wlPatternLayout :: !Layout
+                 , wlGuardLayout :: !Layout
                  , wlComprehensionLayout :: !Layout
                  , wlOtherLayout :: !Layout
                  }
@@ -213,6 +217,7 @@ simpleWithinLayout layout = WithinLayout { wlModuleLayout = layout
                                          , wlSpecialLayout = layout
                                          , wlPatternLayout = layout
                                          , wlComprehensionLayout = layout
+                                         , wlGuardLayout = layout
                                          , wlOtherLayout = layout
                                          }
 
@@ -530,6 +535,7 @@ withinToText TypeDeclaration = "type"
 withinToText ComprehensionDeclaration = "comprehension"
 withinToText SpecialDeclaration = "special"
 withinToText PatternDeclaration = "pattern"
+withinToText GuardDeclaration = "guard"
 withinToText OtherDeclaration = "other"
 
 textToWithin :: T.Text -> Maybe WithinDeclaration
@@ -542,6 +548,7 @@ textToWithin "type" = Just TypeDeclaration
 textToWithin "comprehension" = Just ComprehensionDeclaration
 textToWithin "special" = Just SpecialDeclaration
 textToWithin "pattern" = Just PatternDeclaration
+textToWithin "guard" = Just GuardDeclaration
 textToWithin "other" = Just OtherDeclaration
 textToWithin _ = Nothing
 
@@ -561,7 +568,7 @@ keyToText (ConfigMapKey (Just n) (Just l) (Just w)) =
 
 -- attoparsec for within parsing
 textToKey :: T.Text -> Maybe ConfigMapKey
-textToKey t = 
+textToKey t =
   let
     hasWithin = " within " `T.isInfixOf` t
     hasIn = " in " `T.isInfixOf` t
