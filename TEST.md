@@ -890,3 +890,1710 @@ Long module exports don't force overlong line.
 ``` haskell
 module SimpleFunctions ( identity, compose, append, firstElement, secondElem ) where
 ```
+
+# CITI
+
+## Data
+
+``` haskell
+data SimpleR
+  = SimpleR { srA :: a, srB :: (a -> a)
+    , srC :: (forall a. a -> (a, a)), srD :: (forall a b. C a, C2 b => a -> (a, b) -> (a, a))}
+  deriving (Show )
+```
+
+``` haskell
+data Term a :: ((* -> *) -> *) where
+  If
+    :: { cnd :: Term Bool, tru :: Term a, fls :: Term a } -> Term (a -> (a, a))
+  deriving
+  ( Show, Eq, Ord)
+```
+
+``` haskell
+data Expr :: * -> * where
+  Const :: Int -> Expr Int
+  Plus :: Expr Int -> Expr Int -> Expr Int
+  Eq :: Expr Int -> Expr Int -> Expr Bool
+  deriving (Show)
+```
+
+``` haskell
+data KafkaCfg
+  = KafkaCfg { kcBrokers :: ![ T.Text ]
+              , kcTimeoutMillis         :: !Timeout
+              , kcBatchSize             :: !BatchSize
+                , kcOffsetReset           :: !OffsetReset
+              , kcMaxPollIntervalMillis :: !(Maybe Integer) } deriving
+                            ( Eq , Show )
+```
+
+``` haskell
+{-# LANGUAGE ExistentialQuantification #-}
+
+data Command m
+  = Simple !T.Text !(Handler T.Text m)
+  | forall a. Re !T.Text !(FullRegexMatch -> Maybe a) !(Handler a m)
+```
+
+``` haskell
+{-# LANGUAGE ExistentialQuantification #-}
+
+data DispatchableCommand m
+  = DispatchableSimple !(T.Text, T.Text) !T.Text !(Handler T.Text m)
+  | forall a. DispatchableRe !FullRegexMatch !T.Text !(FullRegexMatch -> Maybe a) !(Handler a m)
+```
+
+``` haskell
+{-# LANGUAGE RankNTypes #-}
+
+type NatToIO m
+  = (forall a. m a -> IO a)
+```
+
+## TypeSignatures
+
+``` haskell
+
+functionDefinition :: forall a b c. (C a, B a ~ C b) => C a -> (forall z k. (B k, B k ~ B z) => (forall d. C d => C d -> r) -> C a) -> (r -> a)
+functionDefinition = undefined
+```
+
+``` haskell
+{-# LANGUAGE RankNTypes #-}
+
+hoistGAppMToIO :: forall m s. (KafkaConsumer -> s) -> (forall a. m a -> s -> IO a)
+                                                   -> KafkaConsumer
+                                                   -> (forall a. m a -> IO a)
+hoistGAppMToIO mkState runner kc = go
+    where
+    go :: m a -> IO a
+    go act = runner act $ mkState kc
+```
+
+``` haskell
+{-# LANGUAGE RankNTypes #-}
+
+defer :: ((defer -> s) -> (forall a. m a -> s -> n a) -> defer -> act -> act2) -> (defer -> s)
+                                                                               -> (forall a. m a -> s -> n a)
+                                                                               -> (arg -> act)
+                                                                               -> defer
+                                                                               -> arg
+                                                                               -> act2
+defer hoist mkState runner = go
+  where
+    go act kc y = hoist mkState runner kc (act y)
+```
+
+## FunctionBodies
+
+``` haskell
+{-# LANGUAGE TypeApplications #-}
+
+functionDefinition = do
+                   let res = undefined @z
+                       res2 = undefined
+
+                   a <- a :: b
+                   pure $ f @z a
+```
+
+``` haskell
+{-# LANGUAGE TypeApplications #-}
+
+functionDefinition = let
+                    res = undefined @z
+                    res2 = undefined
+                     in do
+                      a <- a :: b
+                      pure $ f @z a
+```
+
+## FunctionDeclarations
+
+``` haskell
+
+functionDefinition avalue anothervalue = undefined
+```
+
+``` haskell
+
+functionDefinition (DeSum d v a) anothervalue = undefined
+```
+
+``` haskell
+
+functionDefinition R { asd = v } = undefined
+```
+
+``` haskell
+
+functionDefinition (DeSum d (R { asd = v }) a) = undefined
+```
+
+``` haskell
+
+functionDefinition R { asd = v, aLongerField = aLongerField } = undefined
+```
+
+``` haskell
+
+functionDefinition (R { asd = v, aLongerField = aLongerField }) = undefined
+```
+
+``` haskell
+{-# LANGUAGE ViewPatterns #-}
+
+functionDefinition (unDeSum -> anothervalue) = undefined
+```
+
+``` haskell
+{-# LANGUAGE RecordWildCards #-}
+
+functionDefinition R { .. } = undefined
+```
+
+``` haskell
+{-# LANGUAGE RecordWildCards #-}
+
+functionDefinition (R { .. }) = undefined
+```
+
+``` haskell
+{-# LANGUAGE RecordWildCards #-}
+
+functionDefinition R { asd = v, aLongerField = aLongerField, .. } = undefined
+```
+
+``` haskell
+{-# LANGUAGE RecordWildCards #-}
+
+functionDefinition (R { asd = v, aLongerField = aLongerField, .. }) = undefined
+```
+
+``` haskell
+{-# LANGUAGE NamedFieldPuns #-}
+
+functionDefinition R { asd , aLongerField } = undefined
+```
+
+``` haskell
+{-# LANGUAGE NamedFieldPuns #-}
+
+functionDefinition (R { asd , aLongerField }) = undefined
+```
+
+``` haskell
+{-# LANGUAGE NamedFieldPuns #-}
+{-# LANGUAGE RecordWildCards #-}
+
+functionDefinition R { asd, aLongerField , .. } = undefined
+```
+
+``` haskell
+{-# LANGUAGE NamedFieldPuns #-}
+{-# LANGUAGE RecordWildCards #-}
+
+functionDefinition (R { asd , aLongerField , .. }) = undefined
+```
+
+``` haskell
+{-# LANGUAGE RecordWildCards #-}
+
+function = pure KafkaCfg { ..}
+```
+
+## Constructs
+
+### Case
+
+``` haskell
+
+functionDefinition x
+  = case x of y | y > 7 -> undefined
+              [y, z] | y > 7 -> undefined
+              (y:z) | y > 7 -> undefined
+```
+
+### LambdaCase
+
+``` haskell
+{-# LANGUAGE LambdaCase #-}
+
+functionDefinition
+  = \case
+  y | y > 7 -> undefined
+  [y, z] | y > 7 -> undefined
+  (y:z) | y > 7 -> undefined
+```
+
+### MultiWayIf
+
+``` haskell
+{-# LANGUAGE MultiWayIf #-}
+
+functionDefinition = if | y > 1 -> undefined
+                        | otherwise -> undefined
+```
+
+### FunctionAlternatives
+
+``` haskell
+{-# LANGUAGE MultiWayIf #-}
+
+functionDefinition (A y) = if
+                              | y > 1 -> undefined
+                              | otherwise -> undefined
+functionDefinition (B y) = case y of
+                              y      | y > 7 -> undefined
+                              [y, z] | y > 7 -> undefined
+                              (y:z)  | y > 7 -> undefined
+functionDefinition (C _ _ y) = let d = y + 1 in d + 2
+```
+
+``` haskell
+{-# LANGUAGE LambdaCase #-}
+
+-- LAME not exported steal them
+offsetToInt64
+  :: PartitionOffset
+  -> Int64
+offsetToInt64
+  = \case
+  PartitionOffsetEnd       -> -1
+  PartitionOffset off      -> off
+{-# INLINE offsetToInt64 #-}
+
+int64ToOffset
+  :: Int64
+  -> PartitionOffset
+int64ToOffset o
+  | o >= 0     = PartitionOffset o
+  | otherwise  = PartitionOffsetInvalid
+{-# INLINE int64ToOffset #-}
+```
+
+### Lists
+
+``` haskell
+foo = do
+  pure [ x
+    , y ]
+```
+
+``` haskell
+foo = do
+  pure [ x -- comment
+    , y ]
+```
+
+``` haskell
+foo = do
+  pure [ x {- comment -}
+    , y ]
+```
+
+``` haskell
+foo = do
+  pure [ x {- comment -} , y ]
+```
+
+``` haskell
+foo = let d = [ x -- comment
+                , y ]
+      in d
+```
+
+``` haskell
+foo = let d = [ x
+                , y ]
+      in d
+```
+
+``` haskell
+foo = let d = [ x
+                , y , z]
+      in d
+```
+
+### ListComprehensions
+
+``` haskell
+foo ys = [ (y, y) | y <- ys
+      , y > 1 , y `div` 10 == 1
+        ]
+```
+
+``` haskell
+foo = let d ys = [ (y, y) | y <- ys
+                , y > 1 , y `div` 10 == 1
+                ] in d
+```
+
+### ClassDecl and InstDecl
+
+``` haskell
+
+class ToJSON a where
+  toJSON :: a -> Value
+  default toJSON :: (Generic a, GToJSON (Rep a)) => a -> Value
+  toJSON = genericToJSON defaultOptions
+```
+
+``` haskell
+
+instance Data () where
+  type Base = ()
+  newtype Wrapped = Wrapped { unWrap :: () }
+  data Expr :: * -> * where
+    Const :: Int -> Expr Int
+    Plus :: Expr Int -> Expr Int -> Expr Int
+    Eq :: Expr Int -> Expr Int -> Expr Bool
+```
+
+``` haskell
+newtype RecordableTopicPartition = RecordableTopicPartition { unRecordableTopicPartition :: TopicPartition }
+      deriving Show
+```
+
+Where with no body means mdecls is Just []
+
+``` haskell
+{-# LANGUAGE MultiParamTypeClasses #-}
+
+-- | 'MonadHandler' adds together 'MonadRoute', some extra capabilities and the ability to use <|>
+class (Alternative m, MonadRoute s m, SupportsHandler m, SupportsChatBack m) =>  MonadHandler s m where
+```
+
+Missing where means mdecls is Nothing
+
+``` haskell
+{-# LANGUAGE MultiParamTypeClasses #-}
+
+-- | 'MonadHandler' adds together 'MonadRoute', some extra capabilities and the ability to use <|>
+class (Alternative m, MonadRoute s m, SupportsHandler m, SupportsChatBack m) =>  MonadHandler s m
+```
+
+``` haskell
+{-# LANGUAGE MultiParamTypeClasses #-}
+
+instance
+  ( MonadIO m
+  , MonadFail m
+  , Alternative (AppM' s m)
+  , MonadThrow m
+  , MonadBaseControl IO m
+  , HasRedisConn s
+  , HasChatState s
+  , HasPost s
+  , HasSendToChannel s
+  , HasConsulClient s
+  , HasUserMessage s
+  , HasAcls s
+  ) => MonadHandler s (AppM' s m) where
+```
+
+### RecConstr and RecUpdate
+
+``` haskell
+
+foo = Point { x = 1, y = 2 }
+```
+
+``` haskell
+{-# LANGUAGE RecordWildCards #-}
+
+foo = Point { x = 1 -- the one
+            , y
+            , ..
+            }
+```
+
+``` haskell
+
+foo = bar { x = 1 }
+```
+
+``` haskell
+{-# LANGUAGE RecordWildCards #-}
+
+foo = bar { x = 1 -- the one
+          , y
+          , ..
+          }
+```
+
+``` haskell
+{-# LANGUAGE RecordWildCards #-}
+
+foo = bar { x = 1 -- the one
+          , va = 34
+          , y
+          , ..
+          }
+```
+
+### LANGUAGE Pragma
+
+``` haskell
+{-# LANGUAGE TupleSections #-}
+{-# LANGUAGE UnboxedTuples #-}
+{-# LANGUAGE UnboxedSums #-}
+```
+
+``` haskell
+{-# LANGUAGE TupleSections #-}
+{-# LANGUAGE UnboxedTuples #-}
+{-# LANGUAGE UnboxedSums #-}
+{-# LANGUAGE LambdaCase #-}
+{-# LANGUAGE ApplicativeDo #-}
+```
+
+``` haskell
+{-# LANGUAGE ApplicativeDo #-}
+{-# LANGUAGE LambdaCase #-}
+{-# LANGUAGE TupleSections #-}
+
+{-# LANGUAGE UnboxedSums #-}
+{-# LANGUAGE UnboxedTuples #-}
+```
+
+``` haskell
+{-# LANGUAGE TupleSections #-}
+{-# LANGUAGE UnboxedTuples #-}
+
+{-# LANGUAGE UnboxedSums #-}
+{-# LANGUAGE LambdaCase #-}
+{-# LANGUAGE ApplicativeDo #-}
+```
+
+### ImportSpecList
+
+``` haskell
+{-# LANGUAGE PatternSynonyms #-}
+
+import Style.Haskell.Example (
+                              Point(coord2X,coord2Y,coord3X,coord3Y,coord3Z)
+                             , Enum(..)
+                             ,  Either(..)
+                             ,  Buffer
+                             , type (+)
+                             , pattern Awesome
+                             , hello
+                             , welcome
+                             , alpha
+                             )
+```
+
+``` haskell
+import           Text.Regex.TDFA.Text ()
+```
+
+``` haskell
+import Text.Regex.TDFA.Text (alpha)
+```
+
+### ExportSpecList
+
+``` haskell
+{-# LANGUAGE PatternSynonyms #-}
+
+module Style.Haskell.Example
+        ( -- * Types
+          Point(coord2X,coord2Y,coord3X,coord3Y,coord3Z)
+        , Enum(..)
+        ,  Either(..)
+        -- ** Before G
+        ,  G(a ,.., Z) -- ^ On G
+        -- ** After G
+        , Buffer
+        , type (+)
+        -- | Some docs
+        , pattern Awesome
+        , module M
+          -- * Functions
+        , hello
+          -- ** Internal Functions
+        , welcome
+        , alpha
+        -- $doc
+        )where
+```
+
+### Tuple, UnboxedSum, List
+
+``` haskell
+
+foo = ()
+foo = (1, 2)
+foo = (1 -- the one
+ , 2)
+```
+
+``` haskell
+{-# LANGUAGE TupleSections #-}
+
+foo = (1,)
+foo = (,2)
+foo = (,2,)
+```
+
+``` haskell
+{-# LANGUAGE UnboxedTuples #-}
+
+foo = (# #)
+foo = (# 1, 2 #)
+foo = (# 1 -- the one
+ , 2 #)
+```
+
+
+``` haskell
+{-# LANGUAGE UnboxedSums #-}
+
+foo = (# 1 #)
+foo = (# | 1 | | #)
+foo = (# | 1 -- the one
+      | | #)
+```
+
+``` haskell
+
+foo = []
+foo = [1]
+foo = [1,2]
+foo = [1 -- the one
+ , 2]
+```
+
+### Syntax
+
+#### Exponents
+``` haskell
+
+fn = 1234e+6
+fn = 1234e-6
+fn = 1234e6
+```
+
+#### BinaryLiterals
+``` haskell
+{-# LANGUAGE BinaryLiterals #-}
+
+fn = 0b011110
+```
+
+#### HexFloatLiterals
+
+``` haskell
+{-# LANGUAGE HexFloatLiterals #-}
+
+fn = 0x1.1
+fn = 0x0.1p-4
+fn = 0x0.1p12
+fn = 0xF.FF
+fn = 0xF.FFp-12
+fn = f 0xFFp12
+```
+
+``` haskell
+{-# LANGUAGE HexFloatLiterals #-}
+fn = f 0xF . FFp12
+fn = f 0xF.FFp12
+```
+
+#### NumericUnderscores
+
+``` haskell
+{-# LANGUAGE NumericUnderscores #-}
+
+fn = do 3_000
+```
+
+``` haskell
+{-# LANGUAGE NumericUnderscores #-}
+
+fn = 3_000
+fn = 2_123_123_1234
+```
+
+``` haskell
+{-# LANGUAGE BinaryLiterals #-}
+{-# LANGUAGE HexFloatLiterals #-}
+{-# LANGUAGE NumericUnderscores #-}
+
+fn = let t = 3_000 in t
+
+fn = let t = 0x3ff_00_00
+         b = 0b01_0000_0000
+         e = 6.022_140_857e+23
+      in (t, b , e)
+```
+
+## SpecialFormatting
+
+### NestedDo
+
+``` haskell
+fn = do a <- aFunction
+        val <- anotherFunction a
+        (longerValue, ked) <- yetMoreFunctions
+
+        pure ()
+```
+
+``` haskell
+fn = do a <- aFunction
+        val <- anotherFunction a
+        (longerValue, ked) <- yetMoreFunctions $ do v <- morefn val
+                                                    ret <- pure 1
+                                                    comboBreaker <- function v ret
+
+                                                    pure comboBreaker
+
+        pure ()
+```
+
+``` haskell
+fn = do a <- aFunction
+        val <- anotherFunction a
+        (longerValue, ked) <- yetMoreFunctions $ do v <- morefn val
+                                                    ret <- pure 1
+                                                    comboBreaker <- function v ret
+
+                                                    pure comboBreaker
+
+        andFinallyTheLastButNotLeast <- drawFromAnother longerValue
+        pure ()
+```
+
+### Monoids
+
+``` haskell
+-- Global consumer properties
+consumerProps
+  :: forall m s. ( SupportsKafka m, SupportsLogging m
+                 , SupportsRedis m
+                 , SupportsTime m
+                   , MonadBaseControl IO m )
+                => KafkaCfg -> (KafkaConsumer -> s)
+                 -> (forall a. m a -> s -> IO a) -> T.Text
+                -> ConsumerProperties
+consumerProps KafkaCfg { .. }
+              mkState
+               runner
+               group = brokersList [ BrokerAddress k | k <- kcBrokers ]
+                      <> groupId (ConsumerGroupId group) <> noAutoCommit
+                      <> setCallback (rebalanceCallback (defer hoistGAppMToIO mkState runner (redisRebalanceCallback group)))
+                       <> setCallback (offsetCommitCallback printingOffsetCallback)
+                      <> setCallback (logCallback printingLogCallback)
+                       <> debugOptions [] <> logLevel KafkaLogDebug <> extraProps extraPropsCfg
+  where extraPropsCfg = fromList $ catMaybes
+                        [("max.poll.interval.ms", ) . T.pack . show <$> kcMaxPollIntervalMillis]
+```
+
+### PatternGuards
+
+``` haskell
+{-# LANGUAGE PatternGuards #-}
+
+-- | A haddock
+-- with another line
+fn :: AValue -> Maybe AReturnValue
+prometheus app req respond | Wai.requestMethod req == HTTP.methodGet
+                           , 1024 <- reqBodyTrunc req
+                           , Wai.pathInfo req == prometheusEndPoint =
+                              -- XXX: Should probably be "metrics" rather than "prometheus", since
+                              -- "prometheus" can be confused with actual prometheus.
+                              if prometheusInstrumentPrometheus then instrumentApp "prometheus"
+                                                                    (const respondWithMetrics) req respond
+                                                                else respondWithMetrics respond
+                           | prometheusInstrumentApp = instrumentApp "app" app req respond
+                           | otherwise               = app req respond
+```
+
+### Guard Styles
+
+``` haskell
+-- prometheus (D app) req respond = case () of _ | prometheusInstrumentApp -> instrumentApp "app" app req respond
+--                                               | otherwise  -> app req respond
+```
+
+All the guards
+
+``` haskell
+{-# LANGUAGE MultiWayIf #-}
+
+-- | A haddock
+-- with another line
+fn :: AValue -> Maybe AReturnValue
+prometheus (C app) req respond = if | prometheusInstrumentApp -> instrumentApp "app" app req respond
+                                    | otherwise -> app req respond
+prometheus (B app) req respond | prometheusInstrumentApp = instrumentApp "app" app req respond
+                               | otherwise  = app req respond
+-- prometheus (D app) req respond = case () of _ | prometheusInstrumentApp -> instrumentApp "app" app req respond
+--                                               | otherwise  -> app req respond
+```
+
+``` haskell
+  parseJSON
+    = withArray "Labels"
+    $ \a -> case V.toList a of
+    []                  -> pure
+      $ Labels0 ()
+    [a1]                -> uncurry Labels1 <$> pairTo a1
+    ls   | length ls == 2 -> conv Labels2 ls listTo2Tuple
+    ls   | length ls == 3 -> conv Labels3 ls listTo3Tuple
+    ls   | length ls == 4 -> conv Labels4 ls listTo4Tuple
+    ls   | length ls == 5 -> conv Labels5 ls listTo5Tuple
+    ls   | length ls == 6 -> conv Labels6 ls listTo6Tuple
+    ls   | length ls == 7 -> conv Labels7 ls listTo7Tuple
+    ls   | length ls == 8 -> conv Labels8 ls listTo8Tuple
+    ls   | length ls == 9 -> conv Labels9 ls listTo9Tuple
+    _                   -> fail "Not a legal label"
+
+```
+
+### ApplicativeConstructs
+
+``` haskell
+fn = AppArgs <$> switch (help "Some help" <> long "an-arg")
+  <*> strOption (long "another-arg")
+  <*> option auto (long "last-arg" <> value 8080 <> showDefault)
+```
+
+## Regression
+
+Leading inline comments break syntax
+
+``` haskell
+mkMetric
+  = let
+      {- Gauges are more complicated in the sidecar since they need to account for different aggregation strategies -}
+      t = 1 in t
+
+mkMetric = do
+              {- Gauges are more complicated in the sidecar since they need to account for different aggregation strategies -}
+              t <- fn 1
+              pure ()
+
+data R = R { rField  :: Stuff
+             {- Gauges are more complicated in the sidecar since they need to account for different aggregation strategies -}
+           , rField2 :: Stuff }
+
+{- Gauges are more complicated in the sidecar since they need to account for different aggregation strategies -}
+mkMetric = do t <- fn 1
+              pure ()
+```
+
+``` haskell
+mkMetric
+  = do
+  {-
+     Gauges are more complicated in the sidecar since they need to account for different aggregation strategies
+     based on the clients knowledge of the values being measured.
+
+     Since most of this is unknown until the client message comes in cleanup and aggregation need
+     to close over some IORef's that need to be kept pruned.
+  -}
+  createNow <- realToFrac <$> getPOSIXTime
+
+  pure ()
+```
+
+``` haskell
+mkMetric
+  = let
+      {-
+        Gauges are more complicated in the sidecar since they need to account for different aggregation strategies
+        based on the clients knowledge of the values being measured.
+
+        Since most of this is unknown until the client message comes in cleanup and aggregation need
+        to close over some IORef's that need to be kept pruned.
+      -}
+      t = 1 in t
+```
+
+``` haskell
+mkMetric
+  = let
+      {-
+        Gauges are more complicated in the sidecar since they need to account for different aggregation strategies
+        based on the clients knowledge of the values being measured.
+
+        Since most of this is unknown until the client message comes in cleanup and aggregation need
+        to close over some IORef's that need to be kept pruned. -}
+      t = 1 in t
+```
+
+``` haskell
+mkMetric
+  = let
+      {- Gauges are more complicated in the sidecar since they need to account for different aggregation strategies
+        based on the clients knowledge of the values being measured.
+
+        Since most of this is unknown until the client message comes in cleanup and aggregation need
+        to close over some IORef's that need to be kept pruned. -}
+      t = 1 in t
+```
+
+Idempotance failing
+
+``` haskell
+data ABody
+  = forall shape body
+  . ( KnownSymbol shape
+    , ToJSON (DataContainer shape body)
+    , ToJSON (RelationsContainer shape body)
+    , ToJSON (Relations body)
+    , ToJSON (Body shape body)
+    ) => ABody (Body shape body)
+```
+
+Simple nested import
+
+``` haskell
+import           Control.Applicative
+  ( Alternative ((<|>))
+  )
+```
+
+This case involved some hacks. list wants to split tuple, which makes illegal syntax. hack around it
+
+``` haskell
+reactToEvent protocolState event
+  = case (protocolState, event) of
+  (NormalState,MessageEvent (Message _ (Right userMessage@(UserMessage channel_ user_ text_ NotMe)))) -> do
+    pure ()
+```
+
+``` haskell
+{-# LANGUAGE MultiWayIf #-}
+
+reactToEvent protocolState event
+  = if | (protocolState, event) == (NormalState, MessageEvent (Message 2 (Right (UserMessage "as" 2 "sd" NotMe)))) -> do pure ()
+```
+
+``` haskell
+reactToEvent protocolState event
+  | (protocolState, event) == (NormalState, MessageEvent (Message 2 (Right (UserMessage "as" 2 "sd" NotMe)))) = do pure ()
+```
+
+``` haskell
+reactToEvent (NormalState, MessageEvent (Message _ (Right userMessage@(UserMessage channel_ user_ text_ NotMe)))) = do pure ()
+```
+
+This case involved some hacks. list wants to split tuple, which makes illegal syntax. hack around it
+
+``` haskell
+{-| Builds a Fold that consumes messages coming from the Slack RTM connection.
+
+-}
+eventFold
+  :: TChan (Text,UserMessage,Text -> IO ())
+  -> ChatState
+  -> FoldM IO Event ()
+eventFold pool cs
+  = FoldM reactToEvent (pure InitialState) (\_ -> pure ())
+  where
+    reactToEvent protocolState event
+      = case (protocolState, event) of
+      (NormalState,MessageEvent (Message _ (Right userMessage@(UserMessage channel_ user_ text_ NotMe)))) -> do
+        pure ()
+```
+
+This case involved some hacks. list wants to split tuple, which makes illegal syntax. hack around it
+
+``` haskell
+{-| Builds a Fold that consumes messages coming from the Slack RTM connection.
+
+-}
+eventFold
+  :: TChan (Text,UserMessage,Text -> IO ())
+  -> ChatState
+  -> FoldM IO Event ()
+eventFold pool cs
+  = FoldM reactToEvent (pure InitialState) (\_ -> pure ())
+  where
+    reactToEvent protocolState event
+      = case (protocolState, event) of
+      (InitialState,HelloEvent) ->
+        pure NormalState
+      (InitialState,_) ->
+        throwIO (userError "wrong start")
+      (NormalState,MessageEvent (Message _ (Right userMessage@(UserMessage channel_ user_ text_ NotMe)))) -> do
+        currentcs <- readTVarIO (chatVar cs)
+        let
+          whoami
+            = identity (self currentcs)
+          send
+            = sendMessageToChannel cs channel_
+        if has (ims.ix channel_) currentcs
+          then -- IM message?
+            case isDirectedTo text_ of
+              Just (target,text')
+                | user_ /= whoami && target == whoami ->
+                  atomically (writeTChan pool (text',userMessage, send))
+              Nothing
+                | user_ /= whoami ->
+                  atomically (writeTChan pool (text_,userMessage,send))
+              _ -> pure ()
+          else -- message in general channel?
+            case isDirectedTo text_ of
+              Just (target,text')
+                | user_ /= whoami && target == whoami ->
+                  atomically (writeTChan pool (text',userMessage, send . addressTo user_))
+              _ -> pure ()
+        pure NormalState
+      _ ->
+        pure NormalState
+```
+
+``` haskell
+-- | Expose Prometheus metrics and instrument an application with some basic
+-- metrics (e.g. request latency).
+prometheus
+  :: PrometheusSettings
+  -> Wai.Middleware
+prometheus PrometheusSettings {..} app req respond
+  | Wai.requestMethod req == HTTP.methodGet
+     && Wai.pathInfo req == prometheusEndPoint =
+    -- XXX: Should probably be "metrics" rather than "prometheus", since
+    -- "prometheus" can be confused with actual prometheus.
+    if prometheusInstrumentPrometheus
+    then instrumentApp "prometheus"
+      (const respondWithMetrics) req respond
+    else respondWithMetrics respond
+  | prometheusInstrumentApp = instrumentApp "app" app req respond
+  | otherwise = app req respond
+```
+
+### RHS
+
+``` haskell
+fn = do
+  case slackUsers of
+    (toList -> [slack])                    -> let
+                                                prunedSlack
+                                                  = if T.isPrefixOf "@" slack
+                                                  then T.tail slack
+                                                  else slack
+
+                                                invisible
+                                                  :: T.Text
+                                                  -> T.Text
+                                                  -> T.Text
+                                                invisible k v
+                                                  = [fmt|[]({k}:{v})|]
+
+                                                metaBody
+                                                  = T.intercalate ""
+                                                  [ invisible k v
+                                                  | (k, v)
+                                                   <- [ ( "uuid"
+                                                        , UUID.toText uuid
+                                                        )
+                                                      , ( "message_consume_time"
+                                                        , T.pack
+                                                            $ show time
+                                                        )
+                                                      , ( "kafka_partition"
+                                                        , T.pack
+                                                            $ show
+                                                            $ crPartition
+                                                            kafkaMsg
+                                                        )
+                                                      , ( "kafka_offset"
+                                                        , T.pack
+                                                            $ show
+                                                            $ crOffset kafkaMsg
+                                                        )
+                                                      , ("user", dkeUser)
+                                                      , ( "slack_username"
+                                                        , prunedSlack
+                                                        )
+                                                      ]
+                                                  ]
+
+                                                fullMessage
+                                                  = [fmt|{dkeMessage}\n{dkeBody}|]
+
+                                                finalMessage
+                                                  = maybe fullMessage
+                                                  (\run -> [fmt|{fullMessage}\nCausal Run Url: {run}|])
+                                                  dkeRunTrigger
+
+                                                debugMessage
+                                                  = [fmt|{groupName}\n{finalMessage}\n{metaBody}|]
+                                              in
+                                                findTarget
+                                                (TargetChannel prunedSlack)
+                                                 >>= \case
+                                                Just ch -> realSendToChannel ch
+                                                  finalMessage
+                                                   >> realPostDebug debugMessage
+                                                   >> realIncrCounter
+                                                  mUserNotificationsSent
+                                                Nothing -> realPostDebug
+                                                  [fmt|No slack user found: {prunedSlack}|]
+                                                   >> realIncrCounter
+                                                  mUserNotificationsNoSlackFound
+    users               | length users > 1 -> realPostDebug
+      [fmt|Too many slack users found: {dkeUser} : {users:s}|]
+       >> realIncrCounter mUserNotificationsTooManyUsersFound
+```
+
+## Full Module
+
+``` haskell
+{-# LANGUAGE FlexibleContexts    #-}
+{-# LANGUAGE LambdaCase          #-}
+{-# LANGUAGE NumericUnderscores  #-}
+{-# LANGUAGE OverloadedStrings   #-}
+{-# LANGUAGE QuasiQuotes         #-}
+{-# LANGUAGE RankNTypes          #-}
+{-# LANGUAGE RecordWildCards     #-}
+{-# LANGUAGE ScopedTypeVariables #-}
+{-# LANGUAGE TupleSections       #-}
+{-# LANGUAGE TypeApplications    #-}
+{-# LANGUAGE ViewPatterns        #-}
+
+
+module KafkaConsumer
+  ( KafkaCfg (..)
+  , KafkaConsumerEvent (..)
+  , logKafka
+  , logKafka'
+  , kafkaTopicConsumer
+  , redisKey
+  , recordOffsetsToRedis
+  , restoreOffsetsFromRedis
+  , removeInvalidOffsetsForRecording
+  , redisRebalanceCallback'
+  , int64ToOffset
+  , getKafkaConsumerCfgFromEnv
+  ) where
+
+import           Control.Arrow
+  ( (&&&)
+  )
+import           Control.Exception
+  ( SomeException
+  )
+import           Control.Exception.Lifted
+  ( bracket
+  , try
+  )
+import           Control.Monad
+  ( forM
+  , forM_
+  , void
+  )
+import           Control.Monad.Reader
+  ( MonadReader
+  )
+import           Control.Monad.Trans.Control
+import           Data.Aeson
+  ( FromJSON
+  , eitherDecode
+  )
+import qualified Data.ByteString             as BS
+import qualified Data.ByteString.Char8       as BSC
+import qualified Data.ByteString.Lazy        as BL
+import           Data.Char
+  ( toLower
+  )
+import           Data.Foldable
+  ( toList
+  )
+import           Data.Int
+  ( Int64
+  )
+import qualified Data.Map.Strict             as M
+import           Data.Maybe
+  ( catMaybes
+  , fromMaybe
+  )
+import qualified Data.Text                   as T
+import qualified Data.Text.Encoding          as TE
+import qualified Data.Time.Clock.POSIX       as POSIX
+import           GHC.Exts
+  ( fromList
+  )
+import           Kafka.Consumer
+  ( BatchSize (..)
+  , BrokerAddress (..)
+  , ConsumerGroupId (..)
+  , ConsumerProperties (..)
+  , ConsumerRecord (..)
+  , KafkaConsumer
+  , KafkaError
+  , KafkaLogLevel (..)
+  , Offset (..)
+  , OffsetCommit (..)
+  , OffsetReset (..)
+  , PartitionId (..)
+  , PartitionOffset (..)
+  , RebalanceEvent (..)
+  , Subscription
+  , Timeout (..)
+  , TopicName (..)
+  , TopicPartition (..)
+  , brokersList
+  , debugOptions
+  , extraProps
+  , groupId
+  , logCallback
+  , logLevel
+  , newConsumer
+  , noAutoCommit
+  , offsetCommitCallback
+  , offsetReset
+  , rebalanceCallback
+  , setCallback
+  , topics
+  )
+import           PyF
+import           Text.Read
+  ( readMaybe
+  )
+
+import           PureLib.Types
+
+data KafkaCfg
+  = KafkaCfg
+  { kcBrokers               :: ![T.Text]
+  , kcTimeoutMillis         :: !Timeout
+  , kcBatchSize             :: !BatchSize
+  , kcOffsetReset           :: !OffsetReset
+  , kcMaxPollIntervalMillis :: !(Maybe Integer)
+  }
+  deriving (Eq, Show)
+
+kafkaPrefix
+  :: String
+kafkaPrefix
+  = "KafkaConsumer:    "
+
+logKafka
+  :: String
+  -> IO ()
+logKafka msg
+  = do
+  ts <- POSIX.getPOSIXTime
+  putStrLn [fmt|{ts:s}: {kafkaPrefix}{msg}|]
+
+logKafka'
+  :: ( SupportsLogging m
+     , SupportsTime m
+     , Monad m
+     )
+  => T.Text
+  -> m ()
+logKafka' msg
+  = do
+  ts <- getPOSIXTime
+  logIt [fmt|{ts:s}: {kafkaPrefix}{msg}|]
+
+
+-- Global consumer properties
+consumerProps
+  :: forall m s
+   . ( SupportsKafka m
+     , SupportsLogging m
+     , SupportsRedis m
+     , SupportsTime m
+     , MonadBaseControl IO m
+     )
+  => KafkaCfg
+  -> (KafkaConsumer -> s)
+  -> (forall a. m a -> s -> IO a)
+  -> T.Text
+  -> ConsumerProperties
+consumerProps KafkaCfg {..} mkState runner group
+  = brokersList [BrokerAddress k | k <- kcBrokers]
+  <> groupId (ConsumerGroupId group)
+  <> noAutoCommit
+  <> setCallback (rebalanceCallback (defer hoistGAppMToIO mkState runner (redisRebalanceCallback group)))
+  <> setCallback (offsetCommitCallback printingOffsetCallback)
+  <> setCallback (logCallback printingLogCallback)
+  <> debugOptions []
+  <> logLevel KafkaLogDebug
+  <> extraProps extraPropsCfg
+  where
+    extraPropsCfg
+      = fromList
+      $ catMaybes
+        [ ("max.poll.interval.ms",) . T.pack . show <$> kcMaxPollIntervalMillis ]
+
+-- Subscription to topics
+consumerSub
+  :: KafkaCfg
+  -> T.Text
+  -> Subscription
+consumerSub _kcConfig topic
+  = topics [TopicName topic]
+  <> offsetReset Earliest
+
+
+data KafkaConsumerEvent
+  = KCEDecodeSucceeded
+  | KCEHandled
+  | KCEDecodeFailed
+  deriving
+  ( Show
+  , Eq
+  )
+
+-------------------------------------------------------------------
+processMessages
+  :: ( SupportsKafka m
+     , SupportsRedis m
+     , SupportsLogging m
+     , SupportsTime m
+     , MonadReader s m
+     , FromJSON e
+     )
+  => KafkaCfg
+  -> T.Text
+  -> (ConsumerRecord (Maybe BS.ByteString) (Maybe BS.ByteString) -> e -> m ())
+  -> (KafkaConsumerEvent -> T.Text -> T.Text -> m ())
+  -> m (Either KafkaError ())
+processMessages KafkaCfg {..} group onMessageCB onEvent
+  = do
+  logKafka' "Polling for Messages"
+  msgs <- pollMessageBatch kcTimeoutMillis kcBatchSize
+
+  logKafka' [fmt|Messages: {msgs:s}|]
+  forM_ msgs $ \msg1 -> do
+    logKafka' [fmt|Message: {msg1:s}|]
+
+    forM_ msg1 $ \msg ->
+
+      forM_ (crValue msg) $ \msgValue ->
+        case eitherDecode $ BL.fromStrict msgValue of
+          Right decoded -> do
+            incKafkaMetric KCEDecodeSucceeded msg
+            onMessageCB msg decoded
+            incKafkaMetric KCEHandled msg
+          Left err -> do
+            logKafka' [fmt|Failed to decode msg: {err:s}|]
+            incKafkaMetric KCEDecodeFailed msg
+
+    err <- commitAllOffsets OffsetCommit
+    logKafka' [fmt|Offsets: {maybe "Committed." (T.pack . show) err}|]
+
+  recordOffsetsToRedis
+    group
+    $ removeInvalidOffsetsForRecording
+    $ fmap (\((t, p), o) -> TopicPartition t p (int64ToOffset o))
+    $ M.toList
+    $ M.fromListWith
+        max
+          [ ((crTopic m, crPartition m), (+1) $ unOffset $ crOffset m)
+          | Right m <- msgs
+          ]
+
+  return $ Right ()
+
+  where
+    incKafkaMetric e msg
+      = onEvent
+      e
+      (unTopicName . crTopic $ msg)
+      (T.pack . show . unPartitionId . crPartition $ msg)
+
+
+-- LAME not exported steal them
+offsetToInt64
+  :: PartitionOffset
+  -> Int64
+offsetToInt64
+  = \case
+  PartitionOffsetBeginning -> -2
+  PartitionOffsetEnd       -> -1
+  PartitionOffset off      -> off
+  PartitionOffsetStored    -> -1000
+  PartitionOffsetInvalid   -> -1001
+{-# INLINE offsetToInt64 #-}
+
+int64ToOffset
+  :: Int64
+  -> PartitionOffset
+int64ToOffset o
+  | o == -2    = PartitionOffsetBeginning
+  | o == -1    = PartitionOffsetEnd
+  | o == -1000 = PartitionOffsetStored
+  | o >= 0     = PartitionOffset o
+  | otherwise  = PartitionOffsetInvalid
+{-# INLINE int64ToOffset #-}
+
+printingLogCallback
+  :: Int
+  -> String
+  -> String
+  -> IO ()
+printingLogCallback i s s1
+  = logKafka
+  $ "Logit: "
+  <> show i
+  <> " "
+  <> s
+  <> " "
+  <> s1
+
+redisKey
+  :: T.Text
+  -> TopicName
+  -> PartitionId
+  -> BSC.ByteString
+redisKey groupName topicName partitionId
+  = "kafka_consumer.group_positions."
+  <> TE.encodeUtf8 (unTopicName topicName)
+  <> "."
+  <> TE.encodeUtf8 groupName
+  <> "."
+  <> BSC.pack (show $ unPartitionId partitionId)
+  <> ".position"
+
+newtype RecordableTopicPartition
+  = RecordableTopicPartition
+  { unRecordableTopicPartition :: TopicPartition
+  }
+  deriving
+  Show
+
+mkRecordableTopicPartition
+  :: TopicPartition
+  -> Maybe RecordableTopicPartition
+mkRecordableTopicPartition tp@TopicPartition {tpOffset = PartitionOffset _}
+  = Just $ RecordableTopicPartition tp
+mkRecordableTopicPartition _
+  = Nothing
+
+recordOffsetsToRedis
+  :: ( SupportsRedis m
+     , SupportsLogging m
+     , SupportsTime m
+     , Foldable f
+     , Monad m
+     )
+  => T.Text
+  -> f RecordableTopicPartition
+  -> m ()
+recordOffsetsToRedis _ (null -> True)
+  = pure ()
+recordOffsetsToRedis group positions
+  = do
+  logKafka' [fmt|Positions to record to redis {(toList positions):s}|]
+  forM_ positions $ \(RecordableTopicPartition TopicPartition {..}) ->
+    setRedis (redisKey group tpTopicName tpPartition) (BSC.pack $ show $ offsetToInt64 tpOffset)
+
+restoreOffsetsFromRedis
+  :: ( SupportsRedis m
+     , SupportsKafka m
+     , SupportsLogging m
+     , SupportsTime m
+     , Monad m
+     )
+  => T.Text
+  -> [(TopicName, PartitionId)]
+  -> m ()
+restoreOffsetsFromRedis _ (null -> True)
+  = pure ()
+restoreOffsetsFromRedis group ps
+  = do
+  res <- forM ps $ \(topicName, partitionId) ->
+    fmap (topicName, partitionId,) <$> getRedis (redisKey group topicName partitionId)
+
+  logKafka' [fmt|Raw results from redis {res:s}|]
+
+  let
+    seeks
+      =
+      [ TopicPartition t p (int64ToOffset $ read $ BSC.unpack o)
+      | Right (t, p, Just o) <- res
+      ]
+
+  logKafka' [fmt|Filtered results from redis for seeking {seeks:s}|]
+
+  void $ seek (Timeout 3_000) seeks
+
+redisRebalanceCallback
+  :: forall m
+   . ( SupportsRedis m
+     , SupportsKafka m
+     , SupportsLogging m
+     , SupportsTime m
+     , MonadBaseControl IO m
+     )
+  => T.Text
+  -> RebalanceEvent
+  -> m ()
+redisRebalanceCallback group e
+  = either
+  (logKafka' . ("[Rebalance] caught an error rebalancing " <>) . T.pack . show)
+  (const $ pure ())
+    =<< (try @m @SomeException $ redisRebalanceCallback' group e)
+
+redisRebalanceCallback'
+  :: forall m
+   . ( SupportsRedis m
+     , SupportsKafka m
+     , SupportsLogging m
+     , SupportsTime m
+     , Monad m
+     )
+  => T.Text
+  -> RebalanceEvent
+  -> m ()
+redisRebalanceCallback' group
+  = \case
+  RebalanceBeforeAssign ps ->
+    logKafka' [fmt|[Rebalance] About to assign partitions: {ps:s}|]
+  RebalanceAssign ps -> do
+    restoreOffsetsFromRedis group ps
+    logKafka' [fmt|[Rebalance] Assign partitions: {ps:s}|]
+  RebalanceBeforeRevoke ps ->
+    logKafka' [fmt|[Rebalance] About to revoke partitions: {ps:s}|]
+  RebalanceRevoke ps -> do
+    positions <- position ps
+
+    forM_ positions $ \positions' ->
+      recordOffsetsToRedis
+        group
+        $ removeInvalidOffsetsForRecording positions'
+
+    logKafka' [fmt|[Rebalance] Revoke partitions: {ps:s}|]
+
+printingOffsetCallback
+  :: KafkaConsumer
+  -> KafkaError
+  -> [TopicPartition]
+  -> IO ()
+printingOffsetCallback _ e ps
+  = do
+  logKafka ("Offsets callback: " <> show e)
+  mapM_ (logKafka . ("Offsets callback: " <>) . show . (tpTopicName &&& tpPartition &&& tpOffset)) ps
+
+getKafkaConsumerCfgFromEnv
+  :: forall m
+   . ( SupportsEnv m
+     , Monad m
+     )
+  => m KafkaCfg
+getKafkaConsumerCfgFromEnv
+  = do
+  let
+    defBatch
+      = BatchSize 500
+    defTimeout
+      = Timeout 100
+    defOffsetReset
+      = Earliest
+
+    envHelper
+      :: a
+      -> (String -> a)
+      -> String
+      -> m a
+    envHelper def_ conv_ env_
+      = maybe
+      def_
+      conv_
+      <$> lookupEnv env_
+
+  kcBrokers <- envHelper
+    []
+    (T.splitOn "," . T.pack)
+    "IR_EVENTS_KAFKA_SERVERS"
+
+  kcBatchSize <- envHelper
+    defBatch
+    (maybe defBatch BatchSize . readMaybe)
+    "IR_CONSUMER_MAX_POLL_RECORDS"
+
+  kcTimeoutMillis <- envHelper
+    defTimeout
+    (maybe defTimeout Timeout . readMaybe)
+    "IR_CONSUMER_POLL_TIMEOUT_MS"
+
+  kcMaxPollIntervalMillis <- envHelper
+    Nothing
+    readMaybe
+    "IR_CONSUMER_MAX_POLL_INTERVAL_MS"
+
+  kcOffsetReset <- envHelper
+    defOffsetReset
+    (fromMaybe defOffsetReset . (\v ->
+      case fmap toLower v of
+        "earliest" -> Just Earliest
+        "latest"   -> Just Latest
+        _          -> Nothing
+    ))
+    "IR_CONSUMER_OFFSET_RESET"
+
+  pure KafkaCfg {..}
+
+-- Running an example
+kafkaTopicConsumer
+  :: forall m s e
+   . ( Monad m
+     , SupportsAsync m
+     , SupportsGracefulTermination m
+     , SupportsKafka m
+     , SupportsLogging m
+     , SupportsRedis m
+     , SupportsTime m
+     , MonadBaseControl IO m
+     , MonadReader s m
+     , FromJSON e
+     )
+  => (KafkaConsumer -> s)
+  -> (forall a. m a -> s -> IO a)
+  -> (ConsumerRecord (Maybe BS.ByteString) (Maybe BS.ByteString) -> e -> m ())
+  -> (KafkaConsumerEvent -> T.Text -> T.Text -> m ())
+  -> T.Text
+  -> T.Text
+  -> IO ()
+kafkaTopicConsumer mkState runner onMessage onEvent topic group
+  = do
+  logKafka "Start consumer"
+
+  kcConfig <- getKafkaConsumerCfgFromEnv
+
+  let
+    props
+      = consumerProps kcConfig mkState runner group
+
+  res <- bracket
+    (mkConsumer kcConfig props)
+    clConsumer
+    (runHandler kcConfig)
+
+  logKafka [fmt|End consumer: {res:s}|]
+  where
+    mkConsumer kcConfig props
+      = do
+      logKafka "Starting a new consumer"
+      c <- newConsumer props (consumerSub kcConfig topic)
+      logKafka "Started a new consumer"
+      pure c
+
+
+    clConsumer (Left err)
+      = do
+      logKafka [fmt|Finalizing a consumer that failed to start: {err:s}|]
+      pure $ Left err
+    clConsumer (Right kc)
+      = do
+      logKafka "Preparing to finalize a consumer"
+      r <- hoistGAppMToIO mkState runner kc (finalizeConsumer topic group)
+      logKafka "Finalized a consumer"
+      pure r
+
+    runHandler
+      :: KafkaCfg
+      -> Either KafkaError KafkaConsumer
+      -> IO (Either KafkaError ())
+    runHandler _kcConfig (Left err)
+      = do
+      logKafka "No consumer to run. Bail"
+      return (Left err)
+    runHandler kcConfig (Right kc)
+      = do
+      logKafka "Hoist and process messages"
+      r <- hoistGAppMToIO mkState runner kc go
+      logKafka "Hoist and process messages finished gracefully"
+      pure r
+      where
+        go = processMessages kcConfig group onMessage onEvent >> checkForDeath >>= \case
+          True -> pure (Right ())
+          False -> yield >> go
+
+finalizeConsumer
+  :: ( SupportsKafka m
+     , SupportsRedis m
+     , SupportsLogging m
+     , SupportsTime m
+     , MonadReader s m
+     )
+  => T.Text
+  -> T.Text
+  -> m (Either KafkaError ())
+finalizeConsumer topic group
+  = do
+  let
+    pfx
+      :: T.Text
+    pfx
+      = "Finalize:"
+
+  logKafka' [fmt|{pfx} Committing all offsets on finalize|]
+  err <- commitAllOffsets OffsetCommit
+  logKafka' [fmt|{pfx} {maybe "Finally Committed Offsets" (T.pack . show) err}|]
+
+  logKafka' [fmt|{pfx} Fetching assignment from kafka|]
+  topicToPartition <- assignment
+  logKafka' [fmt|{pfx} Fetched assignments {topicToPartition:s}|]
+
+  forM_ topicToPartition $ \topicToPartition' -> do
+    let
+      topicName
+        = TopicName topic
+      ourIds
+        = fmap (topicName,) <$> M.lookup topicName topicToPartition'
+
+    forM_ ourIds $ \ourIds' -> do
+      logKafka' [fmt|{pfx} Getting positions from kafka|]
+      -- Hypothesis: this doesnt give us true positions for things we havent seen...
+      positions <- position ourIds'
+      logKafka' [fmt|{pfx} Fetched positions {positions:s}|]
+
+      forM_ positions $ \positions' -> do
+        logKafka' [fmt|{pfx} Recording positions to redis {positions':s}"|]
+        recordOffsetsToRedis
+          group
+          (removeInvalidOffsetsForRecording positions')
+
+  maybe (Right ()) Left <$> closeConsumer
+
+-- as for Hypothesis: remove weird offsets, only record true offsets
+removeInvalidOffsetsForRecording
+  :: [TopicPartition]
+  -> [RecordableTopicPartition]
+removeInvalidOffsetsForRecording positions
+  = catMaybes
+  [ mkRecordableTopicPartition t
+  | t <- positions
+  ]
+
+hoistGAppMToIO
+  :: forall m s
+   . (KafkaConsumer -> s)
+  -> (forall a. m a -> s -> IO a)
+  -> KafkaConsumer
+  -> (forall a. m a -> IO a)
+hoistGAppMToIO mkState runner kc
+  = go
+  where
+  go
+    :: m a
+    -> IO a
+  go act
+    = runner act $ mkState kc
+
+defer
+  :: ((defer -> s) -> (forall a. m a -> s -> n a) -> defer -> act -> act2)
+  -> (defer -> s)
+  -> (forall a. m a -> s -> n a)
+  -> (arg -> act)
+  -> defer
+  -> arg
+  -> act2
+defer hoist mkState runner
+  = go
+  where
+    go act kc y
+      = hoist mkState runner kc (act y)
+```
