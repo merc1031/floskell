@@ -1853,9 +1853,22 @@ instance Pretty Exp where
         Unboxed -> list Expression "(#" "#)" "," exprs
 
 #if MIN_VERSION_haskell_src_exts(1,20,0)
-    prettyPrint (UnboxedSum _ before after expr) = group Expression "(#" "#)"
-        . inter space $ replicate before (write "|") ++ [ pretty expr ]
-        ++ replicate after (write "|")
+    prettyPrint (UnboxedSum _ before after expr) =
+        withLayout cfgLayoutUnboxedSum flex vertical
+      where
+        flex = group Expression "(#" "#)" $ do
+           replicateM_ (before - 1) (withOperatorFormatting Expression "unboxed-alt" (write "|") id)
+           when (before > 0) $
+              withOperatorFormatting Expression "unboxed-alt-present" (write "|") id
+           pretty expr
+           replicateM_ after (withOperatorFormatting Expression "unboxed-alt" (write "|") id)
+
+        vertical = groupV Expression "(#" "#)" $ do
+           replicateM_ (before - 1) (withOperatorFormattingV Expression "unboxed-alt" (write "|") id)
+           when (before > 0) $
+              withOperatorFormattingV Expression "unboxed-alt-present" (write "|") id
+           pretty expr
+           replicateM_ after (withOperatorFormattingV Expression "unboxed-alt" (write "|") id)
 #endif
 
 #if MIN_VERSION_haskell_src_exts(1,23,0)
