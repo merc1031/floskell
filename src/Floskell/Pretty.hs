@@ -1887,9 +1887,21 @@ instance Pretty Exp where
         flex = group Expression "[" "]" $
             list' Expression "," exprs
 
-        vertical =
-          groupV Expression "[" "]" $
-            listV' Expression "," exprs
+        vertical = do
+          mcompactVerticalList <- getConfig (cfgOptionCompactVerticalList . cfgOptions)
+          case mcompactVerticalList of
+              Nothing ->
+                groupV Expression "[" "]" $
+                  listV' Expression "," exprs
+              Just (compactZero, compactOne) -> do
+                let
+                  groupFn = case exprs of
+                      [] | compactZero -> withGroupH Expression "compact-list"
+                      [_] | compactOne -> withGroupH Expression "compact-list"
+                      _ -> groupV Expression
+                groupFn "[" "]" $
+                  listV' Expression "," exprs
+
 
     prettyPrint (ParArray _ exprs) = list Expression "[:" ":]" "," exprs
 
