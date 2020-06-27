@@ -232,6 +232,7 @@ data LayoutConfig =
                  , cfgLayoutPatternSynonym :: !Layout
                  , cfgLayoutConstraints :: !Layout
                  , cfgLayoutType :: !WithinLayout
+                 , cfgLayoutUnboxedSum :: !Layout
                  }
     deriving ( Generic )
 
@@ -251,6 +252,7 @@ instance Default LayoutConfig where
                        , cfgLayoutPatternSynonym = Flex
                        , cfgLayoutConstraints = Flex
                        , cfgLayoutType = def
+                       , cfgLayoutUnboxedSum = Flex
                        }
 
 newtype OpConfig = OpConfig { unOpConfig :: ConfigMap Whitespace }
