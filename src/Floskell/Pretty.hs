@@ -29,8 +29,6 @@ import           Floskell.Types
 
 import qualified Language.Haskell.Exts.Pretty as HSE
 import           Language.Haskell.Exts.Syntax
-import Debug.Trace
-import Debug.Pretty.Simple
 
 -- | Like `span`, but comparing adjacent items.
 run :: (a -> a -> Bool) -> [a] -> ([a], [a])
@@ -702,8 +700,7 @@ prettyForallAdv mtyvarbinds mcontext mtyvarbinds' mcontext' p = do
 
     prettyForallContext listy mtyvarbinds mcontext
     prettyForallContext listy mtyvarbinds' mcontext'
-    within OtherDeclaration $
-      p
+    within OtherDeclaration p
   where
     prettyForallContext layoutCt mtvb mct = do
       forM_ mtvb $ \tyvarbinds -> do
@@ -735,7 +732,6 @@ prettyGADT dataornew
            derivings =
         within GADTDeclaration $ do
           depend' (pretty dataornew >> sequence_ mheadAfter) $ do
-              -- LLRM traceM $ ("In Gadt " <> show mkind)
               case mcontextAndDeclheadOrType of
                 Left (mcontext, declhead) -> do
                   mapM_ pretty mcontext
@@ -961,7 +957,7 @@ instance Pretty Decl where
                 newline
                 linedOnside typeeqns
 
-    prettyPrint (DataDecl _ dataornew mcontext declhead qualcondecls derivings) = do
+    prettyPrint (DataDecl _ dataornew mcontext declhead qualcondecls derivings) =
         within RecordDeclaration $ do
           depend' (pretty dataornew) $ do
               mapM_ pretty mcontext
@@ -1052,8 +1048,7 @@ instance Pretty Decl where
     prettyPrint (SpliceDecl _ expr) = pretty expr
 
     prettyPrint (TypeSig _ names ty) =
-        -- traceM $ "in typesig " <> show names
-        within TypeDeclaration $ do
+        within TypeDeclaration $
           onside $ prettyTypesig Declaration names ty
 
 #if MIN_VERSION_haskell_src_exts(1,21,0)
@@ -1086,7 +1081,7 @@ instance Pretty Decl where
                 withIndentConfig cfgIndentPatternsig (align p) (indentby p)
 #endif
         where
-          align p = alignOnOperator Declaration "::" p
+          align = alignOnOperator Declaration "::"
 
           indentby p i = indentedBy i $ do
               operator Declaration "::"
@@ -1174,8 +1169,7 @@ instance Pretty Decl where
             mayM_ mactivation $ withPostfix space pretty
             pretty qname
 
-    prettyPrint (SpecSig _ mactivation qname types) = do
-        pTraceM $ "Specialize " <> show (mactivation, qname, types)
+    prettyPrint (SpecSig _ mactivation qname types) =
         prettyPragma "SPECIALISE" $ do
             mayM_ mactivation $ withPostfix space pretty
             within TypeDeclaration $
@@ -1310,7 +1304,7 @@ instance Pretty InstDecl where
                 unless (null qualcondecls) $ prettyConDecls qualcondecls
                 mapM_ pretty derivings
 
-    prettyPrint (InsGData _ dataornew ty mkind gadtdecls derivings) = do
+    prettyPrint (InsGData _ dataornew ty mkind gadtdecls derivings) =
         within GADTDeclaration $ do
             depend' (pretty dataornew) $ do
                 pretty ty
@@ -1383,8 +1377,7 @@ instance Pretty GadtDecl where
 #if MIN_VERSION_haskell_src_exts(1,21,0)
     prettyPrint (GadtDecl _ name _ _ mfielddecls ty) = do
         pretty name
-        operator Declaration "::" -- for gadt this is 2nd :: and then in the decl can be more ::
-        -- Make this configurable somehow?
+        operator Declaration "::"
         mayM_ mfielddecls $ \decls -> do
             within RecordDeclaration $ do
                 prettyRecordFields len Declaration decls
@@ -1452,16 +1445,16 @@ prettyUnGuardedRHS _ctx sep expr =
           pretty expr
 
 instance Pretty Rhs where
-    prettyPrint (UnGuardedRhs _ expr@(Let {})) = do
+    prettyPrint (UnGuardedRhs _ expr@Let {}) = do
         letSpecialization <- getConfig (cfgOptionLetSpecialization . cfgOptions)
         prettyUnGuardedRHS Other letSpecialization expr
-    prettyPrint (UnGuardedRhs _ expr@(ListComp {})) = do
+    prettyPrint (UnGuardedRhs _ expr@ListComp {}) = do
         listCompSpecialization <- getConfig (cfgOptionListCompSpecialization . cfgOptions)
         prettyUnGuardedRHS Other listCompSpecialization expr
-    prettyPrint (UnGuardedRhs _ expr@(ParComp {})) = do
+    prettyPrint (UnGuardedRhs _ expr@ParComp {}) = do
         listCompSpecialization <- getConfig (cfgOptionListCompSpecialization . cfgOptions)
         prettyUnGuardedRHS Other listCompSpecialization expr
-    prettyPrint (UnGuardedRhs _ expr@(ParArrayComp {})) = do
+    prettyPrint (UnGuardedRhs _ expr@ParArrayComp {}) = do
         listCompSpecialization <- getConfig (cfgOptionListCompSpecialization . cfgOptions)
         prettyUnGuardedRHS Other listCompSpecialization expr
     prettyPrint (UnGuardedRhs _ expr) =
@@ -1551,7 +1544,6 @@ instance Pretty Type where
         withinDeclaration <- gets psWithinDeclaration
         nestTypeLevel $ do
           lvl <- gets psTypeNestLevel
-          traceM $ "In outer type or kind " <> show (layout, withinDeclaration, t, lvl)
           case lvl of
               1 -> case layout of
                   TypeFree -> withLayout (withinDeclToLayout withinDeclaration . cfgLayoutType) flex vertical
@@ -1822,10 +1814,10 @@ instance Pretty Exp where
             PBangPat{} : _ -> space
             _ -> return ()
 
-    prettyPrint (Let _ binds expr@(Do {})) = do
+    prettyPrint (Let _ binds expr@Do {}) = do
       letDoSpecialization <- getConfig (cfgOptionLetDoSpecialization . cfgOptions)
       prettyLetIn Other letDoSpecialization binds expr
-    prettyPrint (Let _ binds expr@(MDo {})) = do
+    prettyPrint (Let _ binds expr@MDo {}) = do
       letDoSpecialization <- getConfig (cfgOptionLetDoSpecialization . cfgOptions)
       prettyLetIn Other letDoSpecialization binds expr
     prettyPrint (Let _ binds expr) = prettyLetIn Other False binds expr
