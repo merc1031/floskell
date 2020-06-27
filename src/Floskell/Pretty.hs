@@ -55,6 +55,9 @@ stopRecordField = TabStop "record"
 stopRhs :: TabStop
 stopRhs = TabStop "rhs"
 
+stopGuardedRhs :: TabStop
+stopGuardedRhs = TabStop "guarded-rhs"
+
 flattenApp :: Annotated ast
            => (ast NodeInfo -> Maybe (ast NodeInfo, ast NodeInfo))
            -> ast NodeInfo
@@ -456,6 +459,15 @@ measureInstDecl _ = return Nothing
 measureAlt :: Alt NodeInfo -> Printer (Maybe [Int])
 measureAlt (Alt _ pat _ Nothing) = measure' (pretty pat)
 measureAlt _ = return Nothing
+
+measureGuardedRhs :: GuardedRhs NodeInfo -> Printer (Maybe [Int])
+measureGuardedRhs (GuardedRhs _ [stmt] _) = measure' go
+  where
+    go = do
+      within GuardDeclaration $ do
+        operatorSectionR Pattern "|" $ write "|"
+        (pretty stmt)
+measureGuardedRhs _ = return Nothing
 
 withComputedTabStop :: TabStop
                     -> (AlignConfig -> Bool)
@@ -1470,7 +1482,10 @@ instance Pretty Rhs where
         prettyUnGuardedRHS Other False expr
 
     prettyPrint (GuardedRhss _ guardedrhss) =
-        withIndent cfgIndentMultiIf True $ linedOnside guardedrhss
+        within GuardDeclaration $
+            withIndent cfgIndentMultiIf True $
+              withComputedTabStop stopGuardedRhs cfgAlignMultiIfRhs measureGuardedRhs guardedrhss $
+              linedOnside guardedrhss
 
 instance Pretty GuardedRhs where
     prettyPrint (GuardedRhs _ stmts expr) =
@@ -1479,12 +1494,14 @@ instance Pretty GuardedRhs where
         flex = do
             operatorSectionR Pattern "|" $ write "|"
             inter comma $ map pretty stmts
+            atTabStop stopGuardedRhs
             operator Declaration "="
             pretty expr
 
         vertical = do
             operatorSectionR Pattern "|" $ write "|"
             inter comma $ map pretty stmts
+            atTabStop stopGuardedRhs
             operatorV Declaration "="
             pretty expr
 
