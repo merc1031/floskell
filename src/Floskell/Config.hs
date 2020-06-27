@@ -413,19 +413,19 @@ cfgMapFind' ctx within key ConfigMap{..} =
         value''''
 
 cfgMapFind :: LayoutContext -> ByteString -> ConfigMap a -> a
-cfgMapFind ctx key c = cfgMapFind' ctx Nothing key c
+cfgMapFind ctx = cfgMapFind' ctx Nothing
 
 cfgOpWs' :: LayoutContext -> Maybe WithinDeclaration -> ByteString -> OpConfig -> Whitespace
 cfgOpWs' ctx within op = cfgMapFind' ctx within op . unOpConfig
 
 cfgOpWs :: LayoutContext -> ByteString -> OpConfig -> Whitespace
-cfgOpWs ctx op = cfgOpWs' ctx Nothing op
+cfgOpWs ctx = cfgOpWs' ctx Nothing
 
 cfgGroupWs' :: LayoutContext -> Maybe WithinDeclaration -> ByteString -> GroupConfig -> Whitespace
 cfgGroupWs' ctx within op = cfgMapFind' ctx within op . unGroupConfig
 
 cfgGroupWs :: LayoutContext -> ByteString -> GroupConfig -> Whitespace
-cfgGroupWs ctx op = cfgGroupWs' ctx Nothing op
+cfgGroupWs ctx = cfgGroupWs' ctx Nothing
 
 inWs :: Location -> WsLoc -> Bool
 inWs _ WsBoth = True
@@ -595,7 +595,7 @@ textToKey t =
       _ -> Nothing
   where
     noWithin o l = ConfigMapKey o l Nothing
-    noLayout o w = ConfigMapKey o Nothing w
+    noLayout o = ConfigMapKey o Nothing
 
 instance ToJSON a => ToJSON (ConfigMap a) where
     toJSON ConfigMap{..} = toJSON $ Map.insert "default" cfgMapDefault $
@@ -642,7 +642,7 @@ instance ToJSON WithinLayout where
     toJSON = genericToJSON (recordOptions 2)
 
 instance FromJSON WithinLayout where
-    parseJSON v@(JSON.String {}) = do
+    parseJSON v@JSON.String {} = do
         layout <- parseJSON v
         pure $ simpleWithinLayout layout
 

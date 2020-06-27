@@ -75,12 +75,10 @@ import qualified Data.ByteString.Builder    as BB
 import qualified Data.ByteString.Lazy       as BL
 import           Data.List                  ( intersperse )
 import qualified Data.Map.Strict            as Map
-import           Data.Monoid                ( (<>) )
 
 import qualified Floskell.Buffer            as Buffer
 import           Floskell.Config
 import           Floskell.Types
-import Debug.Trace
 
 -- | Query part of the pretty printer config
 getConfig :: (Config -> b) -> Printer b
@@ -193,7 +191,7 @@ withTabStops stops p = do
     oldstops <- gets psTabStops
     modify $ \s ->
         s { psTabStops =
-                foldr (\(k, v) -> Map.alter (const $ fmap (\x -> col + x) v) k)
+                foldr (\(k, v) -> Map.alter (const $ fmap (col +) v) k)
                       (psTabStops s)
                       stops
           }
@@ -282,6 +280,7 @@ withinDeclToLayout GADTFieldTypeDeclaration = wlGADTFieldTypeLayout
 withinDeclToLayout TypeDeclaration = wlTypeLayout
 withinDeclToLayout SpecialDeclaration = wlSpecialLayout
 withinDeclToLayout ComprehensionDeclaration = wlComprehensionLayout
+withinDeclToLayout PatternDeclaration = wlPatternLayout
 withinDeclToLayout OtherDeclaration = wlOtherLayout
 
 inter :: Printer () -> [Printer ()] -> Printer ()
@@ -366,7 +365,6 @@ withGroup :: LayoutContext -> ByteString -> ByteString -> ByteString -> Printer 
 withGroup ctx op open close p = do
     withinDeclaration <- gets psWithinDeclaration
     force <- getConfig (wsForceLinebreak . cfgGroupWs' ctx (Just withinDeclaration) op . cfgGroup)
-    traceM $ "Group " <> show (ctx, withinDeclaration, op, force)
     if force then vert else oneline hor <|> vert
   where
     hor = withGroupH ctx op open close p
@@ -377,7 +375,6 @@ withGroupH :: LayoutContext -> ByteString -> ByteString -> ByteString -> Printer
 withGroupH ctx op open close p = do
     withinDeclaration <- gets psWithinDeclaration
     ws <- getConfig (cfgGroupWs' ctx (Just withinDeclaration) op . cfgGroup)
-    traceM $ "GroupH " <> show (ctx, withinDeclaration, op, ws)
     write open
     when (wsSpace Before ws) space
     p
@@ -388,7 +385,6 @@ withGroupV :: LayoutContext -> ByteString -> ByteString -> ByteString -> Printer
 withGroupV ctx op open close p = aligned $ do
     withinDeclaration <- gets psWithinDeclaration
     ws <- getConfig (cfgGroupWs' ctx (Just withinDeclaration) op . cfgGroup)
-    traceM $ "GroupV " <> show (ctx, withinDeclaration, op, ws)
     col <- getNextColumn
     write open
     if wsLinebreak Before ws then newline >> when (wsSpace Before ws) space else when (wsSpace Before ws) space
@@ -434,7 +430,6 @@ withOperatorFormatting :: LayoutContext
 withOperatorFormatting ctx op opp fn = do
     withinDeclaration <- gets psWithinDeclaration
     force <- getConfig (wsForceLinebreak . cfgOpWs' ctx (Just withinDeclaration) op . cfgOp)
-    traceM $ "Operator " <> show (ctx, withinDeclaration, op, force)
     if force then vert else hor <|> vert
   where
     hor = withOperatorFormattingH ctx op opp fn
@@ -462,7 +457,6 @@ withOperatorFormattingV :: LayoutContext
 withOperatorFormattingV ctx op opp fn = do
     withinDeclaration <- gets psWithinDeclaration
     ws <- getConfig (cfgOpWs' ctx (Just withinDeclaration) op . cfgOp)
-    traceM $ "Operator " <> show (ctx, withinDeclaration, op, ws)
     if wsLinebreak Before ws then newline >> when (wsSpace Before ws) space else when (wsSpace Before ws) space
     fn $ do
         opp
@@ -492,3 +486,5 @@ operatorSectionR ctx op opp = do
 
 comma :: Printer ()
 comma = operator Expression ","
+
+{-# ANN module ("HLint: ignore Reduce duplication" :: String) #-}
