@@ -579,16 +579,25 @@ prettySimpleDecl :: (Annotated ast1, Pretty ast1, Annotated ast2, Pretty ast2)
                  -> ByteString
                  -> ast2 NodeInfo
                  -> Printer ()
-prettySimpleDecl lhs op rhs =
-  withIndentConfig cfgIndentSimpleDeclaration align indentby
+prettySimpleDecl = prettySimpleDecl' Nothing Nothing
+
+prettySimpleDecl' :: (Annotated ast1, Pretty ast1, Annotated ast2, Pretty ast2)
+                 => Maybe (IndentConfig -> Indent)
+                 -> Maybe (LayoutConfig -> Layout)
+                 -> ast1 NodeInfo
+                 -> ByteString
+                 -> ast2 NodeInfo
+                 -> Printer ()
+prettySimpleDecl' indentCfg layout lhs op rhs =
+  withIndentConfig (fromMaybe cfgIndentSimpleDeclaration indentCfg) align indentby
   where
     align = do
         pretty lhs
-        withLayout cfgLayoutDeclaration flexAlign verticalAlign
+        withLayout (fromMaybe cfgLayoutDeclaration layout) flexAlign verticalAlign
 
     indentby i = do
         pretty lhs
-        withLayout cfgLayoutDeclaration (flexIndentby i) (verticalIndentby i)
+        withLayout (fromMaybe cfgLayoutDeclaration layout) (flexIndentby i) (verticalIndentby i)
 
     flexIndentby i =
         indentedBy i $ do
