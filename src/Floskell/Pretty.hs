@@ -126,8 +126,11 @@ compareAST a b = void a `compare` void b
 
 -- | Return leading comments.
 filterComments :: Annotated a => Location -> a NodeInfo -> [Comment]
-filterComments Before = nodeInfoLeadingComments . ann
-filterComments After = nodeInfoTrailingComments . ann
+filterComments l = filterComments' l . ann
+
+filterComments' :: Location -> NodeInfo -> [Comment]
+filterComments' Before = nodeInfoLeadingComments
+filterComments' After = nodeInfoTrailingComments
 
 -- | Copy comments from one AST node to another.
 copyComments :: (Annotated ast1, Annotated ast2)
@@ -226,21 +229,24 @@ opName'' (Ident _ _) = "``"
 opName'' (Symbol _ str) = BS8.pack str
 
 lineDelta :: Annotated ast => ast NodeInfo -> ast NodeInfo -> Int
-lineDelta prev next = nextLine - prevLine
+lineDelta prev next = lineDelta' (ann prev) (ann next)
+
+lineDelta' :: NodeInfo -> NodeInfo -> Int
+lineDelta' prev next = nextLine - prevLine
   where
     prevLine = maximum (prevNodeLine : prevCommentLines)
 
     nextLine = minimum (nextNodeLine : nextCommentLines)
 
-    prevNodeLine = srcSpanEndLine $ nodeSpan prev
+    prevNodeLine = srcSpanEndLine $ nodeInfoSpan prev
 
-    nextNodeLine = srcSpanStartLine $ nodeSpan next
+    nextNodeLine = srcSpanStartLine $ nodeInfoSpan next
 
     prevCommentLines = map (srcSpanEndLine . commentSpan) $
-        filterComments After prev
+        filterComments' After prev
 
     nextCommentLines = map (srcSpanStartLine . commentSpan) $
-        filterComments Before next
+        filterComments' Before next
 
 linedFn :: Annotated ast
         => (ast NodeInfo -> Printer ())
@@ -483,6 +489,10 @@ moduleName (ModuleName _ s) = s
 
 prettyPragmas :: [ModulePragma NodeInfo] -> Printer ()
 prettyPragmas ps = do
+    -- TODO theres some oddity in preserveVerticalSpace + lang pragmas
+    -- seems to use their original locations after sorting, and therefore "sees" whitespace
+    -- where None should be.
+    -- Need a way to "attach" the empty lines to the Pragma, maybe with a newtype...
     splitP <- getOption cfgOptionSplitLanguagePragmas
     sortP <- getOption cfgOptionSortPragmas
     let ps' = if splitP then concatMap splitPragma ps else ps
