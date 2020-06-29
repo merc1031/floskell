@@ -1,6 +1,7 @@
-resolver: lts-15.11
+resolver: lts-16.4
 packages:
 - '.'
 extra-deps:
-- haskell-src-exts-1.23.1
-- monad-dijkstra-0.1.1.3
+- git: https://github.com/merc1031/haskell-src-exts
+  commit: 2376655f889d170e16b9836b2ae1147f6a074caa
+- monad-dijkstra-0.1.1.3@sha256:d2fc098d7c122555e726830a12ae0423ac187f89de9228f32e56e2f6fc2238e1,1900
