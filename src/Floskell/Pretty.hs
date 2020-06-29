@@ -1068,9 +1068,13 @@ instance Pretty Decl where
 
     prettyPrint (SpliceDecl _ expr) = pretty expr
 
-    prettyPrint (TypeSig _ names ty) =
+    prettyPrint (TypeSig _ names ty@TyForall {}) =
         within TypeDeclaration $
           onside $ prettyTypesig Declaration names ty
+
+    prettyPrint (TypeSig _ names ty) =
+        within TypeDeclaration $
+          onside $ prettyTypesig' Declaration names $ within OtherDeclaration $ pretty ty
 
 #if MIN_VERSION_haskell_src_exts(1,21,0)
     prettyPrint (PatSynSig _
@@ -1685,7 +1689,7 @@ instance Pretty Type where
             write "*"
 #endif
 
-        prettyV (TyForall _ mtyvarbinds mcontext ty) =
+        prettyV (TyForall _ mtyvarbinds mcontext ty) = do
             prettyForallAdv mtyvarbinds mcontext Nothing Nothing (prettyV ty)
 
         prettyV (TyFun _ ty ty') = do
