@@ -114,32 +114,34 @@ instance Default PenaltyConfig where
                         }
 
 data AlignConfig =
-    AlignConfig { cfgAlignLimits       :: !(Int, Int)
-                , cfgAlignCase         :: !Bool
-                , cfgAlignClass        :: !Bool
-                , cfgAlignImportModule :: !Bool
-                , cfgAlignImportSpec   :: !Bool
-                , cfgAlignImportAsMin  :: !(Maybe Int)
-                , cfgAlignLetBinds     :: !Bool
-                , cfgAlignMatches      :: !Bool
-                , cfgAlignMultiIfRhs   :: !Bool
-                , cfgAlignRecordFields :: !Bool
-                , cfgAlignWhere        :: !Bool
+    AlignConfig { cfgAlignLimits            :: !(Int, Int)
+                , cfgAlignCase              :: !Bool
+                , cfgAlignClass             :: !Bool
+                , cfgAlignImportModule      :: !Bool
+                , cfgAlignImportSpec        :: !Bool
+                , cfgAlignImportAsMin       :: !(Maybe Int)
+                , cfgAlignLetBinds          :: !Bool
+                , cfgAlignMatches           :: !Bool
+                , cfgAlignModulePragmaEnds  :: !Bool
+                , cfgAlignMultiIfRhs        :: !Bool
+                , cfgAlignRecordFields      :: !Bool
+                , cfgAlignWhere             :: !Bool
                 }
     deriving ( Generic )
 
 instance Default AlignConfig where
-    def = AlignConfig { cfgAlignLimits       = (10, 25)
-                      , cfgAlignCase         = False
-                      , cfgAlignClass        = False
-                      , cfgAlignImportModule = False
-                      , cfgAlignImportSpec   = False
-                      , cfgAlignImportAsMin  = Nothing
-                      , cfgAlignLetBinds     = False
-                      , cfgAlignMatches      = False
-                      , cfgAlignMultiIfRhs   = False
-                      , cfgAlignRecordFields = False
-                      , cfgAlignWhere        = False
+    def = AlignConfig { cfgAlignLimits            = (10, 25)
+                      , cfgAlignCase              = False
+                      , cfgAlignClass             = False
+                      , cfgAlignImportModule      = False
+                      , cfgAlignImportSpec        = False
+                      , cfgAlignImportAsMin       = Nothing
+                      , cfgAlignLetBinds          = False
+                      , cfgAlignMatches           = False
+                      , cfgAlignModulePragmaEnds  = False
+                      , cfgAlignMultiIfRhs        = False
+                      , cfgAlignRecordFields      = False
+                      , cfgAlignWhere             = False
                       }
 
 data IndentConfig =
