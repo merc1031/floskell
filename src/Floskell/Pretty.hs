@@ -58,6 +58,9 @@ stopRhs = TabStop "rhs"
 stopGuardedRhs :: TabStop
 stopGuardedRhs = TabStop "guarded-rhs"
 
+stopModulePragma :: TabStop
+stopModulePragma = TabStop "module-pragma"
+
 flattenApp :: Annotated ast
            => (ast NodeInfo -> Maybe (ast NodeInfo, ast NodeInfo))
            -> ast NodeInfo
@@ -469,6 +472,11 @@ measureGuardedRhs (GuardedRhs _ [stmt] _) = measure' go
         (pretty stmt)
 measureGuardedRhs _ = return Nothing
 
+measurePragma :: ModulePragma NodeInfo -> Printer (Maybe [Int])
+measurePragma p = (fmap . fmap . fmap $ (\x -> x - 4)) $ measure' go
+  where
+    go = pretty p
+
 withComputedTabStop :: TabStop
                     -> (AlignConfig -> Bool)
                     -> (a -> Printer (Maybe [Int]))
@@ -507,7 +515,8 @@ prettyPragmas ps = do
     sortP <- getOption cfgOptionSortPragmas
     let ps' = if splitP then concatMap splitPragma ps else ps
     let ps'' = if sortP then sortBy compareAST ps' else ps'
-    inter blankline . map lined $ groupBy sameType ps''
+    withComputedTabStop stopModulePragma cfgAlignModulePragmaEnds measurePragma ps $
+        inter blankline . map lined $ groupBy sameType ps''
   where
     splitPragma (LanguagePragma anno langs) =
         map (LanguagePragma anno . (: [])) langs
@@ -858,6 +867,7 @@ prettyPragma' name mp = do
     write "{-# "
     write name
     mayM_ mp $ withPrefix space aligned
+    atTabStop stopModulePragma
     write " #-}"
 
 prettyBinds :: Binds NodeInfo -> Printer ()
