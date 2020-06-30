@@ -1015,8 +1015,16 @@ instance Pretty ImportSpecList where
 
         vertical imports = withIndent cfgIndentImportSpecList True $ do
             when hiding $ write "hiding "
-            groupV Other "(" ")" $
-              listVinternal Other "," imports
+
+            (zeroSpec, oneSpec) <- getConfig (cfgOptionImportCompactSpecialization . cfgOptions)
+            let compactList ctx op open close sep xs =
+                    withGroupH ctx op open close . inter (operatorH ctx sep) $ map pretty xs
+            case imports of
+              xs@[] | zeroSpec -> compactList Other "imp-compact-(" "(" ")" "," xs
+              xs@[_] | oneSpec -> compactList Other "imp-compact-(" "(" ")" "," xs
+              _ ->
+                groupV Other "(" ")" $
+                  listVinternal Other "," imports
 
 instance Pretty ImportSpec where
     prettyPrint (IThingAll _ ivar) = do
