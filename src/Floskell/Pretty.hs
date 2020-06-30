@@ -254,11 +254,12 @@ lineDelta' prev next = nextLine - prevLine
 
 linedFn :: Annotated ast
         => (ast NodeInfo -> Printer ())
+        -> Bool
         -> [ast NodeInfo]
         -> Printer ()
-linedFn fn xs = do
+linedFn fn ignore xs = do
     preserveP <- getOption cfgOptionPreserveVerticalSpace
-    if preserveP
+    if preserveP && not ignore
         then case xs of
             x : xs' -> do
                 cut $ fn x
@@ -269,10 +270,16 @@ linedFn fn xs = do
         else inter newline $ map (cut . fn) xs
 
 lined :: (Annotated ast, Pretty ast) => [ast NodeInfo] -> Printer ()
-lined = linedFn pretty
+lined = lined' False
 
 linedOnside :: (Annotated ast, Pretty ast) => [ast NodeInfo] -> Printer ()
-linedOnside = linedFn prettyOnside
+linedOnside = linedOnside' False
+
+lined' :: (Annotated ast, Pretty ast) => Bool -> [ast NodeInfo] -> Printer ()
+lined' = linedFn pretty
+
+linedOnside' :: (Annotated ast, Pretty ast) => Bool -> [ast NodeInfo] -> Printer ()
+linedOnside' = linedFn prettyOnside
 
 listVOpLen :: LayoutContext -> ByteString -> Printer Int
 listVOpLen ctx sep = do
@@ -516,7 +523,7 @@ prettyPragmas ps = do
     let ps' = if splitP then concatMap splitPragma ps else ps
     let ps'' = if sortP then sortBy compareAST ps' else ps'
     withComputedTabStop stopModulePragma cfgAlignModulePragmaEnds measurePragma ps $
-        inter blankline . map lined $ groupBy sameType ps''
+        inter blankline . map (lined' True) $ groupBy sameType ps''
   where
     splitPragma (LanguagePragma anno langs) =
         map (LanguagePragma anno . (: [])) langs
