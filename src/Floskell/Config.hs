@@ -73,6 +73,7 @@ data WithinDeclaration = ModuleDeclaration
                        | PatternDeclaration
                        | GuardDeclaration
                        | ExportDeclaration
+                       | ClassDeclaration
                        | OtherDeclaration
     deriving ( Eq, Ord, Bounded, Enum, Show, Generic )
 
@@ -208,6 +209,7 @@ data WithinLayout
                  , wlGuardLayout :: !Layout
                  , wlComprehensionLayout :: !Layout
                  , wlExportLayout :: !Layout
+                 , wlClassLayout :: !Layout
                  , wlOtherLayout :: !Layout
                  }
     deriving ( Generic )
@@ -227,6 +229,7 @@ simpleWithinLayout layout = WithinLayout { wlModuleLayout = layout
                                          , wlComprehensionLayout = layout
                                          , wlGuardLayout = layout
                                          , wlExportLayout = layout
+                                         , wlClassLayout = layout
                                          , wlOtherLayout = layout
                                          }
 
@@ -551,6 +554,7 @@ withinToText SpecialDeclaration = "special"
 withinToText PatternDeclaration = "pattern"
 withinToText GuardDeclaration = "guard"
 withinToText ExportDeclaration = "export"
+withinToText ClassDeclaration = "class"
 withinToText OtherDeclaration = "other"
 
 textToWithin :: T.Text -> Maybe WithinDeclaration
@@ -565,6 +569,7 @@ textToWithin "special" = Just SpecialDeclaration
 textToWithin "pattern" = Just PatternDeclaration
 textToWithin "guard" = Just GuardDeclaration
 textToWithin "export" = Just ExportDeclaration
+textToWithin "class" = Just ClassDeclaration
 textToWithin "other" = Just OtherDeclaration
 textToWithin _ = Nothing
 

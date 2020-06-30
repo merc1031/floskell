@@ -344,6 +344,16 @@ listV ctx open close sep xs = groupV ctx open close $ do
            space
     listVinternal ctx sep xs
 
+listG :: (Annotated ast, Pretty ast)
+      => LayoutContext
+      -> ByteString
+      -> ByteString
+      -> ByteString
+      -> [ast NodeInfo]
+      -> Printer ()
+listG ctx open close sep xs =
+    group ctx open close . inter (operator ctx sep) $ map pretty xs
+
 list :: (Annotated ast, Pretty ast)
      => LayoutContext
      -> ByteString
@@ -1107,32 +1117,47 @@ instance Pretty Decl where
     prettyPrint (GDataInsDecl _ dataornew ty mkind gadtdecls derivings) =
         prettyGADT dataornew (Just $ write " instance") (Right ty) mkind gadtdecls derivings
 
-    prettyPrint (ClassDecl _ mcontext declhead fundeps mclassdecls) = do
-        depend "class" $ do
-            mapM_ pretty mcontext
-            pretty declhead
-            unless (null fundeps) $ do
-                operator Declaration "|"
-                list' Declaration "," fundeps
-        mayM_ mclassdecls $ \decls -> do
-            write " where"
-            when (not $ null decls) $
-                withIndent cfgIndentClass True $ withComputedTabStop stopRhs
-                                                                    cfgAlignClass
-                                                                    measureClassDecl
-                                                                    decls $
-                    prettyDecls skipBlankClassDecl DeclClass decls
+    prettyPrint (ClassDecl _ mcontext declhead fundeps mclassdecls) =
+        within ClassDeclaration $ do
+            case mcontext of
+                Nothing -> withOperatorFormatting Declaration "no-ctx-class" (write "class") id
+                Just (CxTuple {}) -> withOperatorFormatting Declaration "class" (write "class") id
+                Just (CxSingle {}) -> withOperatorFormatting Declaration "1-ctx-class" (write "class") id
+                Just (CxEmpty {}) -> withOperatorFormatting Declaration "0-ctx-class" (write "class") id
+            withIndent cfgIndentClass False $ do
+                mapM_ pretty mcontext
+                pretty declhead
+                unless (null fundeps) $ do
+                    operator Declaration "|"
+                    list' Declaration "," fundeps
+                mayM_ mclassdecls $ \decls -> do
+                    operator Declaration "where"
 
-    prettyPrint (InstDecl _ moverlap instrule minstdecls) = do
-        depend "instance" $ do
-            mapM_ pretty moverlap
-            pretty instrule
-        mayM_ minstdecls $ \decls -> do
-            write " where"
-            when (not $ null decls) $
-                withIndent cfgIndentClass True $
-                    withComputedTabStop stopRhs cfgAlignClass measureInstDecl decls $
-                    prettyDecls skipBlankInstDecl DeclInstance decls
+                    when (not $ null decls) $
+                        withComputedTabStop stopRhs
+                                            cfgAlignClass
+                                            measureClassDecl
+                                            decls $
+                            prettyDecls skipBlankClassDecl DeclClass decls
+
+    prettyPrint (InstDecl _ moverlap instrule minstdecls) =
+        within ClassDeclaration $ do
+            let writeI = do write "instance"
+                            mapM_ (\o -> space >> pretty o) moverlap
+
+            case instRuleAnalysis instrule of
+                NoContext -> withOperatorFormatting Declaration "no-ctx-instance" writeI id
+                TupleContext -> withOperatorFormatting Declaration "instance" writeI id
+                OneContext -> withOperatorFormatting Declaration "1-ctx-instance" writeI id
+                ZeroContext -> withOperatorFormatting Declaration "0-ctx-instance" writeI id
+
+            withIndent cfgIndentClass False $ do
+                pretty instrule
+                mayM_ minstdecls $ \decls -> do
+                    operator Declaration "where"
+                    when (not $ null decls) $
+                        withComputedTabStop stopRhs cfgAlignClass measureInstDecl decls $
+                        prettyDecls skipBlankInstDecl DeclInstance decls
 
 #if MIN_VERSION_haskell_src_exts(1,20,0)
     prettyPrint (DerivDecl _ mderivstrategy moverlap instrule) =
@@ -1331,13 +1356,25 @@ instance Pretty DeclHead where
     prettyPrint (DHApp _ declhead tyvarbind) = depend' (pretty declhead) $
         pretty tyvarbind
 
+data ContextType = NoContext
+                 | TupleContext
+                 | OneContext
+                 | ZeroContext
+
+instRuleAnalysis :: InstRule l -> ContextType
+instRuleAnalysis (IParen _ instrule) = instRuleAnalysis instrule
+instRuleAnalysis (IRule _ _ Nothing _) = NoContext
+instRuleAnalysis (IRule _ _ (Just (CxTuple {})) _) = TupleContext
+instRuleAnalysis (IRule _ _ (Just (CxSingle {})) _) = OneContext
+instRuleAnalysis (IRule _ _ (Just (CxEmpty {})) _) = ZeroContext
+
 instance Pretty InstRule where
     prettyPrint (IRule _ mtyvarbinds mcontext insthead) = do
         mapM_ prettyForall mtyvarbinds
         mapM_ pretty mcontext
         pretty insthead
 
-    prettyPrint (IParen _ instrule) = parens $ pretty instrule
+    prettyPrint (IParen _ instrule) = group Declaration "(" ")" $ pretty instrule
 
 instance Pretty InstHead where
     prettyPrint (IHCon _ qname) = pretty qname
@@ -1610,7 +1647,7 @@ instance Pretty Context where
         operator Type "=>"
 
     prettyPrint (CxTuple _ assts) = do
-        list Type "(" ")" "," assts
+        listG Type "(" ")" "," assts
         operator Type "=>"
 
     prettyPrint (CxEmpty _) = do
