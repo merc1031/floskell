@@ -36,6 +36,9 @@ module Floskell.Config
     , inWs
     , wsSpace
     , wsLinebreak
+    , wsSpaceHOverride
+    , wsSpaceH
+    , simpleWhitespace
     , textToKey
     ) where
 
@@ -49,6 +52,7 @@ import           Data.Default       ( Default(..) )
 import qualified Data.HashMap.Lazy  as HashMap
 import           Data.Map.Strict    ( Map )
 import qualified Data.Map.Strict    as Map
+import           Data.Maybe         ( fromMaybe )
 import           Data.Set           ( Set )
 import qualified Data.Set           as Set
 import qualified Data.Text          as T
@@ -83,11 +87,15 @@ data Location = Before | After
 data WsLoc = WsNone | WsBefore | WsAfter | WsBoth
     deriving ( Eq, Ord, Bounded, Enum, Show, Generic )
 
-data Whitespace = Whitespace { wsSpaces         :: !WsLoc
-                             , wsLinebreaks     :: !WsLoc
-                             , wsForceLinebreak :: !Bool
+data Whitespace = Whitespace { wsSpaces          :: !WsLoc
+                             , wsLinebreaks      :: !WsLoc
+                             , wsForceLinebreak  :: !Bool
+                             , wsSpacesHOverride :: !(Maybe WsLoc)
                              }
     deriving ( Show, Generic )
+
+simpleWhitespace :: WsLoc -> WsLoc -> Bool -> Whitespace
+simpleWhitespace wsSpaces wsLinebreaks wsForceLinebreak = Whitespace {wsSpacesHOverride = Nothing, ..}
 
 data Layout = Flex | Vertical | TryOneline
     deriving ( Eq, Ord, Bounded, Enum, Show, Generic )
@@ -281,7 +289,7 @@ newtype OpConfig = OpConfig { unOpConfig :: ConfigMap Whitespace }
 
 instance Default OpConfig where
     def =
-        OpConfig ConfigMap { cfgMapDefault   = Whitespace WsBoth WsBefore False
+        OpConfig ConfigMap { cfgMapDefault   = Whitespace WsBoth WsBefore False Nothing
                            , cfgMapOverrides = Map.empty
                            }
 
@@ -290,7 +298,7 @@ newtype GroupConfig = GroupConfig { unGroupConfig :: ConfigMap Whitespace }
 
 instance Default GroupConfig where
     def = GroupConfig ConfigMap { cfgMapDefault   =
-                                      Whitespace WsBoth WsAfter False
+                                      Whitespace WsBoth WsAfter False Nothing
                                 , cfgMapOverrides = Map.empty
                                 }
 
@@ -380,15 +388,15 @@ defaultConfig =
         }
   where
     opWsOverrides =
-        [ (ConfigMapKey (Just ",") Nothing Nothing, Whitespace WsAfter WsBefore False)
+        [ (ConfigMapKey (Just ",") Nothing Nothing, Whitespace WsAfter WsBefore False Nothing)
         , ( ConfigMapKey (Just "record") Nothing Nothing
-          , Whitespace WsAfter WsAfter False
+          , Whitespace WsAfter WsAfter False Nothing
           )
         , ( ConfigMapKey (Just ".") (Just Type) Nothing
-          , Whitespace WsAfter WsAfter False
+          , Whitespace WsAfter WsAfter False Nothing
           )
         , ( ConfigMapKey (Just "module_where") (Just Declaration) Nothing
-          , Whitespace WsBefore WsNone False
+          , Whitespace WsBefore WsNone False Nothing
           )
         ]
 
@@ -465,6 +473,12 @@ wsSpace loc ws = loc `inWs` wsSpaces ws
 
 wsLinebreak :: Location -> Whitespace -> Bool
 wsLinebreak loc ws = loc `inWs` wsLinebreaks ws
+
+wsSpaceHOverride :: Location -> Whitespace -> Bool
+wsSpaceHOverride loc ws = loc `inWs` fromMaybe WsNone (wsSpacesHOverride ws)
+
+wsSpaceH :: Location -> Whitespace -> Bool
+wsSpaceH loc ws = loc `inWs` fromMaybe (wsSpaces ws) (wsSpacesHOverride ws)
 
 ------------------------------------------------------------------------
 readMaybe :: Read a => String -> Maybe a

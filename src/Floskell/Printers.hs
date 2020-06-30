@@ -379,9 +379,9 @@ withGroupH ctx op open close p = do
     withinDeclaration <- gets psWithinDeclaration
     ws <- getConfig (cfgGroupWs' ctx (Just withinDeclaration) op . cfgGroup)
     write open
-    when (wsSpace Before ws) space
+    when (wsSpaceH Before ws) space
     p
-    when (wsSpace After ws) space
+    when (wsSpaceH After ws) space
     write close
 
 withGroupV :: LayoutContext -> ByteString -> ByteString -> ByteString -> Printer () -> Printer ()
@@ -447,10 +447,10 @@ withOperatorFormattingH :: LayoutContext
 withOperatorFormattingH ctx op opp fn = do
     withinDeclaration <- gets psWithinDeclaration
     ws <- getConfig (cfgOpWs' ctx (Just withinDeclaration) op . cfgOp)
-    when (wsSpace Before ws) space
+    when (wsSpaceH Before ws) space
     fn $ do
         opp
-        when (wsSpace After ws) space
+        when (wsSpaceH After ws) space
 
 withOperatorFormattingV :: LayoutContext
                         -> ByteString
@@ -477,7 +477,7 @@ operatorSectionL :: LayoutContext -> ByteString -> Printer () -> Printer ()
 operatorSectionL ctx op opp = do
     withinDeclaration <- gets psWithinDeclaration
     ws <- getConfig (cfgOpWs' ctx (Just withinDeclaration) op . cfgOp)
-    when (wsSpace Before ws) space
+    when (wsSpaceH Before ws) space
     opp
 
 operatorSectionR :: LayoutContext -> ByteString -> Printer () -> Printer ()
@@ -485,7 +485,7 @@ operatorSectionR ctx op opp = do
     withinDeclaration <- gets psWithinDeclaration
     ws <- getConfig (cfgOpWs' ctx (Just withinDeclaration) op . cfgOp)
     opp
-    when (wsSpace After ws) space
+    when (wsSpaceH After ws) space
 
 comma :: Printer ()
 comma = operator Expression ","
