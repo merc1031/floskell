@@ -1,6 +1,14 @@
 # Floskell [![Build Status](https://travis-ci.org/ennocramer/floskell.png)](https://travis-ci.org/ennocramer/floskell)
 
 Floskell is a flexible Haskell source code pretty printer.
+This is a fork to experiment with more formatting options. Originally started as a PR to add some functionality
+but its gone out of scope for now, and is a bit messy.
+
+Notably it adds many many more tunables in the form of indent/align/layout sections
+Several specialization general options to handle oditions in let in and do and let do and so on.
+And additionally adds a `within` keyword in addition to the `in` keyword for groups and operators in
+order to allow additionally flexibility, especially in the face of things like GADTs and RankNTypes which
+steal/reuse much syntax, and benefit from different formatting options at different contexts
 
 [Documentation](https://github.com/ennocramer/floskell/blob/master/README.md)
 
@@ -130,6 +138,9 @@ Some language constructs allow for tabstop alignment.  Alignment is
 optional and subject to configurable limits, regarding the amount of
 added whitespace.
 
+A change in this fork is that all alignment candidates are considered. In practice 
+this means alignment is more eager, and wont only fire if all can be aligned.
+
 An example:
 
 ```haskell
@@ -158,6 +169,10 @@ operator/enclosed item.
 Whitespace configuration can depend on the context where an operator
 or enclosing punctuation is used.  The context can be one of
 `declaration`, `type`, `pattern`, `expression`, or `other`.
+Additionally there is a refinement decl_context that can be one of
+`module`, `record`, `gadt`, `gadt_field`, `gadt_field_type`, 
+`type`, `comprehension`, `special`, `pattern`, `guard`, `export`, or `other`.
+
 
 An example:
 
@@ -166,6 +181,16 @@ An example:
 tuple = ( 1, 2 )
 -- tuple without any spaces
 tuple = (1,2)
+```
+
+```haskell
+-- list with space after/before parentheses and after comma
+tuple = [ 1
+        , 2
+        , 4
+        ]
+-- list without any spaces due to override
+tuple = [1,2]
 ```
 
 ### Preprocessor Directives (CPP)
