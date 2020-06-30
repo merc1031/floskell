@@ -81,15 +81,22 @@ is as follows:
 
   * `app` (`flex`): Function application
   * `con-decls` (`flex`): Data constructor declarations
+  * `constraints` (`flex`): Signature constraints
   * `declaration` (`flex`): Declarations
   * `export-spec-list` (`flex`): Module export list
+  * `export-spec-inner-list` (`flex`): Module export list sublists
   * `if` (`flex`): If-then-else
   * `import-spec-list` (`flex`): Module import lists
+  * `import-spec-inner-list` (`flex`): Module import lists sublists
   * `infix-app` (`flex`): Infix operator application
   * `let` (`flex`): Let-in
   * `list-comp` (`flex`): List comprehensions
+  * `list` (`flex`): List
   * `record` (`flex`): Record declaration, construction, and update
-  * `type` (`flex`): Types in signatures
+  * `pattern-app` (`flex`): Pattern Applications
+  * `pattern-synonymn` (`flex`): Pattern Synonymns
+  * `type` (`flex`): Types in signatures (Specialized for several contexts) defaults to flex across all
+  * `unboxed-sum` (`flex`): Unboxed sum
 
 ### Indentation Rules
 
@@ -107,16 +114,23 @@ is as follows:
   * `onside` (`4`): Onside indentation
   * `deriving` (`4`): Indentation for deriving lists
   * `where` (`2`): Indentation for where keyword after functions
+  * `module-where` (`Nothing`): Indentation for module where keyword
+  * `app` (`indent-by 4`): Indentation for application
   * `case` (`indent-by 4`): Case analysis
   * `class` (`indent-by 4`): Class and instance declarations
   * `do` (`indent-by 4`): Do and recursive do blocks
   * `export-spec-list` (`indent-by 4`): Module export list
+  * `export-spec-inner-list` (`align`): Module export list inner lists
   * `if` (`indent-by 4`): If-then-else
   * `import-spec-list` (`indent-by 4`): Module import lists
+  * `import-spec-inner-list` (`align`): Module import lists inner lists
   * `let` (`indent-by 4`): Let bindings
   * `let-binds` (`indent-by 4`): Let bindings
   * `let-in` (`indent-by 4`): Expression in let
   * `multi-if` (`indent-by 4`): Guards and multi-way if
+  * `pattern-app` (`indent-by 4`): Pattern apps
+  * `patternsig` (`indent-by 4`): Pattern signatures
+  * `simple-declaration` (`align-or-indent-by 4`): Default for simple declarations, overridden in someplaces
   * `typesig` (`indent-by 4`): Type signatures
   * `where-binds` (`indent-by 2`): Bindings in where block after functions
 
@@ -138,8 +152,11 @@ is as follows:
   * `class` (`false`): Declarations inside class and instance declarations
   * `import-module` (`false`): Names of imported modules
   * `import-spec` (`false`): Module import lists
+  * `import-as-min` (`Nothing`): Module "as" keyword min column
   * `let-binds` (`false`): Let bindings
   * `matches` (`false`): Function match clauses
+  * `module-pragma-ends` (`false`): #-} in module pragmas
+  * `multi-if-rhs` (`false`): rhs of multif and matches guards
   * `record-fields` (`false`): Record field assignments and type signatures
   * `where` (`false`): Declarations in where bindings for functions
 
@@ -152,6 +169,12 @@ is as follows:
   by the opening characters) and optional context to a whitespace
   configuration. The key can be either
 
+  Changes between here and original Floskell include the new decl_context for
+  refining whitespace and layout, and when formatting vertically spaces will be
+  obeyed using the following rule.
+    * Before will place a space directly after the Before linebreak if set
+    * After will place a space directly before the After linebreak if set
+
   * `default`: Defines the fallback whitespace configuration,
 
   * `* in <context>`: Defines the default whitespace configuration
@@ -163,14 +186,46 @@ is as follows:
   * `<punct> in <context>`: Defines the whitespace configuration for
     the given punctuation within the given context,
 
+  * `* within <decl_context>`: Defines the specialized whitespace configuration
+    within the given specialized decl_context,
+
+  * `* in <context> within <decl_context>`: Defines the specialized whitespace configuration
+    in a context within the given specialized decl_context,
+
+  * `<punct> within *`: Defines the specialized whitespace configuration for
+    the given punctuation, or
+
+  * `<punct> within <context>`: Defines the specialized whitespace configuration for
+    the given punctuation within the given decl_context,
+
+  * `<punct> in * within *`: Defines the specialized whitespace configuration for
+    the given punctuation, or
+
+  * `<punct> in <context> within *`: Defines the specialized whitespace configuration for
+    the given punctuation in a context, or
+
+  * `<punct> in * within <decl_context>`: Defines the specialized whitespace configuration for
+    the given punctuation in a decl_context, or
+
+  * `<punct> in <context> within <decl_context>`: Defines the specialized whitespace configuration for
+    the given punctuation in the given context within a decl_context ,
+
   where context is one of `declaration`, `type`, `pattern`,
   `expression`, or `other`.
 
+  where decl_context is one of `module`, `record`, `gadt`, `gadt_field`,
+  `gadt_field_type`, `type`, `comprehension`, `special`, `pattern`,
+  `guard`, `export`, or `other`.
+
+  The greatest power the above gives is in specializing overused syntax
+  Most should be self explanatory , and combine with context to enhance formatting
+
   The value is an object with the following fields:
 
-  * `spaces`: Where to insert spaces.
-  * `linebreaks`: Where to insert linebreaks.
+  * `spaces`: Where to insert spaces. In relation to the `op` or the `expression` in the group.
+  * `linebreaks`: Where to insert linebreaks. `spaces` will be put after `before` linebreaks and before `after` libreaks if configured
   * `force-linebreak`: Whether to enforce vertical layout.
+  * `spaces-h-override`: Due to the change making spaces operate in vertical contexts, this is an override used only in horizontal layout
 
   An example:
 
@@ -181,16 +236,31 @@ is as follows:
         "spaces": "none",
         "linebreaks": "after",
         "force-linebreak": false
+        "spaces-h-override": "none"
       },
       "(": {
         "spaces": "both",
         "linebreaks": "after",
         "force-linebreak": false
+        "spaces-h-override": "none"
+      },
+      ". within gadt_field": {
+        "spaces": "after",
+        "linebreaks": "before",
+        "force-linebreak": true
+        "spaces-h-override": "none"
+      },
+      ". within gadt_field": {
+        "spaces": "both",
+        "linebreaks": "none",
+        "force-linebreak": false
+        "spaces-h-override": "none"
       },
       "( in pattern": {
         "spaces": "none",
         "linebreaks": "none",
-        "force-linebreak": false
+        "force-linebreak": false,
+        "spaces-h-override": "both"
       }
     }
   }
@@ -208,10 +278,37 @@ is as follows:
   * `preserve-vertical-space` (`false`): Whether to preserve additional vertical space between declarations, statements, and a few other places.
   * `decl-no-blank-lines` (`[]`): Where to (not) insert blank lines between declarations (`module`, `class`, `instance`, `where`).
   * `sort-import-lists` (`false`): Whether to sort import statements by the name of the imported module.
+  * `sort-import-spec-inner-lists` (`false`): Whether to sort inner list of import statements by the name of the imported symbol.
   * `sort-imports` (`false`): How to sort import lists (see below).
   * `sort-pragmas` (`false`): Whether to sort module pragmas (`LANGUAGE`, `OPTION`, and `ANN`).
   * `flexible-oneline` (`false`): Allow `do`, `mdo`, `case ... of`, `\case`, and `\... ->` in `try-oneline` layout.
   * `split-language-pragmas` (`false`): Whether to split `LANGUAGE` pragmas.
+  * `multi-if-padding` (`false`): Whether to enable or disable vertical newline padding in multi-if and guards
+  * `let-specialization` (`false`): Whether to apply some specialization to padding of let directly after rhs
+      ``` haskell
+      fn =
+        -- Let is hung via specialization
+        let x
+        in y
+      ```
+  * `let-do-specialization` (`false`): Whether to apply some specialization to padding of do/mdo directly after let. in particular changes the "in" operator to be in special decl_context
+  * `let-in-padding` (`[true, true]`): Whether to apply some specialization to padding of let and in in let in statements
+      ``` haskell
+      fn = let  <- This line break is the first bool in the list
+             x
+           in   <- This line break is the second bool in the list
+             y
+      ```
+  * `list-comp-specialization` (`false`): Whether to apply some specialization to padding of list comprehension-likes
+      ``` haskell
+      fn = <-  This newline is controlled by this config 
+        [ r
+        | r <- a
+        ]
+      ```
+  * `compact-vertical-list` (`Nothing`): Whether to make compact single (`[true, false]`) and 1 element (`[false, true]`) lists
+  * `simple-type-app` (`False`): Whether to disable TyApp flattening and splitting. Need to fix a dramatic slowdown in large constraint lists before removing this config
+  * `alt-padding` (`False`): Whether to add a newline after -> in alt when the RHS is multiline measured
 
 #### Sorting Imports
 
