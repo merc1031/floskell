@@ -1116,11 +1116,12 @@ instance Pretty Decl where
                 list' Declaration "," fundeps
         mayM_ mclassdecls $ \decls -> do
             write " where"
-            withIndent cfgIndentClass True $ withComputedTabStop stopRhs
-                                                                 cfgAlignClass
-                                                                 measureClassDecl
-                                                                 decls $
-                prettyDecls skipBlankClassDecl DeclClass decls
+            when (not $ null decls) $
+                withIndent cfgIndentClass True $ withComputedTabStop stopRhs
+                                                                    cfgAlignClass
+                                                                    measureClassDecl
+                                                                    decls $
+                    prettyDecls skipBlankClassDecl DeclClass decls
 
     prettyPrint (InstDecl _ moverlap instrule minstdecls) = do
         depend "instance" $ do
@@ -1128,9 +1129,10 @@ instance Pretty Decl where
             pretty instrule
         mayM_ minstdecls $ \decls -> do
             write " where"
-            withIndent cfgIndentClass True $
-                withComputedTabStop stopRhs cfgAlignClass measureInstDecl decls $
-                prettyDecls skipBlankInstDecl DeclInstance decls
+            when (not $ null decls) $
+                withIndent cfgIndentClass True $
+                    withComputedTabStop stopRhs cfgAlignClass measureInstDecl decls $
+                    prettyDecls skipBlankInstDecl DeclInstance decls
 
 #if MIN_VERSION_haskell_src_exts(1,20,0)
     prettyPrint (DerivDecl _ mderivstrategy moverlap instrule) =
