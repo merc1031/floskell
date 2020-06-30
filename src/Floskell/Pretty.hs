@@ -940,12 +940,20 @@ instance Pretty ImportDecl where
             atTabStop stopImportSpec
             write " as "
             pretty name
+
         mayM_ importSpecs pretty
+
+toComp :: ImportSpec l -> (Int, String)
+toComp i@IVar {} = (3, HSE.prettyPrint i)
+toComp i@(IAbs _ (NoNamespace {}) _) = (1, HSE.prettyPrint i)
+toComp i@(IAbs {}) = (2, HSE.prettyPrint i)
+toComp i@IThingAll {} = (1, HSE.prettyPrint i)
+toComp i@IThingWith {} = (1, HSE.prettyPrint i)
 
 instance Pretty ImportSpecList where
     prettyPrint (ImportSpecList _ hiding specs) = do
         sortP <- getOption cfgOptionSortImportLists
-        let specs' = if sortP then sortOn HSE.prettyPrint specs else specs
+        let specs' = if sortP then sortOn toComp specs else specs
         atTabStop stopImportSpec
         withLayout cfgLayoutImportSpecList (flex specs') (vertical specs')
       where
@@ -958,7 +966,35 @@ instance Pretty ImportSpecList where
             groupV Other "(" ")" $
               listVinternal Other "," imports
 
-instance Pretty ImportSpec
+instance Pretty ImportSpec where
+    prettyPrint (IThingAll _ ivar) = do
+        withLayout cfgLayoutImportSpecInnerList
+          (do
+            withGroup Other "import-all-cons" "" "" $ pretty ivar
+            withGroup Other "import-all-parens" "(" ")" $ write ".."
+          )
+          (do
+            withGroupV Other "import-all-cons" "" "" $ pretty ivar
+            withGroupV Other "import-all-parens" "(" ")" $ write ".."
+          )
+
+    prettyPrint ivar@IVar {} = prettyHSE ivar
+    prettyPrint ivar@IAbs {} = prettyHSE ivar
+
+    prettyPrint (IThingWith _ ivar vars) = do
+        sortP <- getOption cfgOptionSortImportSpecInnerLists
+        let vars' = if sortP then sortOn HSE.prettyPrint vars else vars
+        pretty ivar
+        withLayout cfgLayoutImportSpecInnerList (flex vars') (vertical vars')
+      where
+        flex vars' = withIndentFlex cfgIndentImportSpecInnerList $ do
+            listAutoWrap Other "(" ")" "," vars'
+
+        vertical vars' = withIndent cfgIndentImportSpecInnerList True $ do
+            groupV Other "(" ")" $
+              listVinternal Other "," vars'
+
+instance Pretty CName
 
 instance Pretty Assoc
 
