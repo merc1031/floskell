@@ -316,6 +316,7 @@ data OptionConfig =
                  , cfgOptionSortImports                 :: !SortImportsRule
                  , cfgOptionSortImportLists             :: !Bool
                  , cfgOptionSortImportSpecInnerLists    :: !Bool
+                 , cfgOptionImportCompactSpecialization :: !(Bool, Bool)
                  , cfgOptionAlignSumTypeDecl            :: !Bool
                  , cfgOptionFlexibleOneline             :: !Bool
                  , cfgOptionPreserveVerticalSpace       :: !Bool
@@ -335,6 +336,7 @@ instance Default OptionConfig where
                        , cfgOptionSortImports                 = NoImportSort
                        , cfgOptionSortImportLists             = False
                        , cfgOptionSortImportSpecInnerLists    = False
+                       , cfgOptionImportCompactSpecialization = (False, False)
                        , cfgOptionAlignSumTypeDecl            = False
                        , cfgOptionFlexibleOneline             = False
                        , cfgOptionPreserveVerticalSpace       = False
