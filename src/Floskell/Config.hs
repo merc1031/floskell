@@ -156,6 +156,7 @@ data IndentConfig =
                  , cfgIndentExportSpecList :: !Indent
                  , cfgIndentIf :: !Indent
                  , cfgIndentImportSpecList :: !Indent
+                 , cfgIndentImportSpecInnerList :: !Indent
                  , cfgIndentLet :: !Indent
                  , cfgIndentLetBinds :: !Indent
                  , cfgIndentLetIn :: !Indent
@@ -180,6 +181,7 @@ instance Default IndentConfig where
                        , cfgIndentExportSpecList = IndentBy 4
                        , cfgIndentIf = IndentBy 4
                        , cfgIndentImportSpecList = IndentBy 4
+                       , cfgIndentImportSpecInnerList = Align
                        , cfgIndentLet = IndentBy 4
                        , cfgIndentLetBinds = IndentBy 4
                        , cfgIndentLetIn = IndentBy 4
@@ -230,6 +232,7 @@ data LayoutConfig =
                  , cfgLayoutExportSpecList :: !Layout
                  , cfgLayoutIf :: !Layout
                  , cfgLayoutImportSpecList :: !Layout
+                 , cfgLayoutImportSpecInnerList :: !Layout
                  , cfgLayoutInfixApp :: !Layout
                  , cfgLayoutLet :: !Layout
                  , cfgLayoutListComp :: !Layout
@@ -250,6 +253,7 @@ instance Default LayoutConfig where
                        , cfgLayoutExportSpecList = Flex
                        , cfgLayoutIf = Flex
                        , cfgLayoutImportSpecList = Flex
+                       , cfgLayoutImportSpecInnerList = Flex
                        , cfgLayoutInfixApp = Flex
                        , cfgLayoutLet = Flex
                        , cfgLayoutListComp = Flex
@@ -301,6 +305,7 @@ data OptionConfig =
                  , cfgOptionSplitLanguagePragmas        :: !Bool
                  , cfgOptionSortImports                 :: !SortImportsRule
                  , cfgOptionSortImportLists             :: !Bool
+                 , cfgOptionSortImportSpecInnerLists    :: !Bool
                  , cfgOptionAlignSumTypeDecl            :: !Bool
                  , cfgOptionFlexibleOneline             :: !Bool
                  , cfgOptionPreserveVerticalSpace       :: !Bool
@@ -319,6 +324,7 @@ instance Default OptionConfig where
                        , cfgOptionSplitLanguagePragmas        = False
                        , cfgOptionSortImports                 = NoImportSort
                        , cfgOptionSortImportLists             = False
+                       , cfgOptionSortImportSpecInnerLists    = False
                        , cfgOptionAlignSumTypeDecl            = False
                        , cfgOptionFlexibleOneline             = False
                        , cfgOptionPreserveVerticalSpace       = False
