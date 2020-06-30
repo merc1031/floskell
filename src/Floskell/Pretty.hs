@@ -917,7 +917,47 @@ instance Pretty ExportSpecList where
             groupV Other "(" ")" $
               listVinternal Other "," exports
 
-instance Pretty ExportSpec
+insertAt :: Int -> a -> [a] -> [a]
+insertAt i a ls
+  | i < 0 = ls
+  | otherwise = go i ls
+  where
+    go 0 xs     = a : xs
+    go n (x:xs) = x : go (n-1) xs
+    go _ []     = []
+{-# INLINE insertAt #-}
+
+instance Pretty ExportSpec where
+    prettyPrint evar@EModuleContents {} = prettyHSE evar
+    prettyPrint evar@EVar {} = prettyHSE evar
+    prettyPrint evar@EAbs {} = prettyHSE evar
+
+    prettyPrint (EThingWith _ ewc evar vars) = do
+        case (ewc, vars) of
+          (EWildcard _ 0, []) ->
+              withLayout cfgLayoutExportSpecInnerList
+                (do
+                  withGroup Other "export-all-cons" "" "" $ pretty evar
+                  withGroup Other "export-all-parens" "(" ")" $ write ".."
+                )
+                (do
+                  withGroupV Other "export-all-cons" "" "" $ pretty evar
+                  withGroupV Other "export-all-parens" "(" ")" $ write ".."
+                )
+          (ewc', vars') -> do
+              let vars'' = case ewc' of
+                            NoWildcard {} -> vars'
+                            EWildcard ni i -> insertAt i (VarName ni (Ident ni "..")) vars'
+              pretty evar
+              withLayout cfgLayoutExportSpecInnerList (flex vars'') (vertical vars'')
+      where
+        flex vars' = withIndentFlex cfgIndentExportSpecInnerList $ do
+            listAutoWrap Other "(" ")" "," vars'
+
+        vertical vars' = withIndent cfgIndentExportSpecInnerList True $ do
+            groupV Other "(" ")" $
+              listVinternal Other "," vars'
+
 
 instance Pretty ImportDecl where
     prettyPrint ImportDecl{..} = do

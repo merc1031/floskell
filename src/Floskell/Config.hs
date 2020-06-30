@@ -72,6 +72,7 @@ data WithinDeclaration = ModuleDeclaration
                        | SpecialDeclaration
                        | PatternDeclaration
                        | GuardDeclaration
+                       | ExportDeclaration
                        | OtherDeclaration
     deriving ( Eq, Ord, Bounded, Enum, Show, Generic )
 
@@ -154,6 +155,7 @@ data IndentConfig =
                  , cfgIndentClass :: !Indent
                  , cfgIndentDo :: !Indent
                  , cfgIndentExportSpecList :: !Indent
+                 , cfgIndentExportSpecInnerList :: !Indent
                  , cfgIndentIf :: !Indent
                  , cfgIndentImportSpecList :: !Indent
                  , cfgIndentImportSpecInnerList :: !Indent
@@ -179,6 +181,7 @@ instance Default IndentConfig where
                        , cfgIndentClass = IndentBy 4
                        , cfgIndentDo = IndentBy 4
                        , cfgIndentExportSpecList = IndentBy 4
+                       , cfgIndentExportSpecInnerList = Align
                        , cfgIndentIf = IndentBy 4
                        , cfgIndentImportSpecList = IndentBy 4
                        , cfgIndentImportSpecInnerList = Align
@@ -204,6 +207,7 @@ data WithinLayout
                  , wlPatternLayout :: !Layout
                  , wlGuardLayout :: !Layout
                  , wlComprehensionLayout :: !Layout
+                 , wlExportLayout :: !Layout
                  , wlOtherLayout :: !Layout
                  }
     deriving ( Generic )
@@ -222,6 +226,7 @@ simpleWithinLayout layout = WithinLayout { wlModuleLayout = layout
                                          , wlPatternLayout = layout
                                          , wlComprehensionLayout = layout
                                          , wlGuardLayout = layout
+                                         , wlExportLayout = layout
                                          , wlOtherLayout = layout
                                          }
 
@@ -230,6 +235,7 @@ data LayoutConfig =
                  , cfgLayoutConDecls :: !Layout
                  , cfgLayoutDeclaration :: !Layout
                  , cfgLayoutExportSpecList :: !Layout
+                 , cfgLayoutExportSpecInnerList :: !Layout
                  , cfgLayoutIf :: !Layout
                  , cfgLayoutImportSpecList :: !Layout
                  , cfgLayoutImportSpecInnerList :: !Layout
@@ -251,6 +257,7 @@ instance Default LayoutConfig where
                        , cfgLayoutConDecls = Flex
                        , cfgLayoutDeclaration = Flex
                        , cfgLayoutExportSpecList = Flex
+                       , cfgLayoutExportSpecInnerList = Flex
                        , cfgLayoutIf = Flex
                        , cfgLayoutImportSpecList = Flex
                        , cfgLayoutImportSpecInnerList = Flex
@@ -544,6 +551,7 @@ withinToText ComprehensionDeclaration = "comprehension"
 withinToText SpecialDeclaration = "special"
 withinToText PatternDeclaration = "pattern"
 withinToText GuardDeclaration = "guard"
+withinToText ExportDeclaration = "export"
 withinToText OtherDeclaration = "other"
 
 textToWithin :: T.Text -> Maybe WithinDeclaration
@@ -557,6 +565,7 @@ textToWithin "comprehension" = Just ComprehensionDeclaration
 textToWithin "special" = Just SpecialDeclaration
 textToWithin "pattern" = Just PatternDeclaration
 textToWithin "guard" = Just GuardDeclaration
+textToWithin "export" = Just ExportDeclaration
 textToWithin "other" = Just OtherDeclaration
 textToWithin _ = Nothing
 

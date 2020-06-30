@@ -282,6 +282,7 @@ withinDeclToLayout SpecialDeclaration = wlSpecialLayout
 withinDeclToLayout ComprehensionDeclaration = wlComprehensionLayout
 withinDeclToLayout PatternDeclaration = wlPatternLayout
 withinDeclToLayout GuardDeclaration = wlGuardLayout
+withinDeclToLayout ExportDeclaration = wlExportLayout
 withinDeclToLayout OtherDeclaration = wlOtherLayout
 
 inter :: Printer () -> [Printer ()] -> Printer ()
