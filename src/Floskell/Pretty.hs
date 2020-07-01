@@ -1026,13 +1026,17 @@ instance Pretty ImportSpecList where
                     withGroupH ctx op open close . inter (operatorH ctx sep) $ map pretty xs
             case imports of
               xs@[] | zeroSpec -> compactList Other "imp-compact-(" "(" ")" "," xs
-              xs@[_] | oneSpec -> compactList Other "imp-compact-(" "(" ")" "," xs
+              xs@[x] | oneSpec && isCompactImport1 x -> compactList Other "imp-compact-(" "(" ")" "," xs
               _ ->
                 groupV Other "(" ")" $
                   listVinternal Other "," imports
+        isCompactImport1 x = case x of
+                               IVar {} -> True
+                               IAbs {} -> True
+                               _       -> False
 
 instance Pretty ImportSpec where
-    prettyPrint (IThingAll _ ivar) = do
+    prettyPrint (IThingAll _ ivar) =
         withLayout cfgLayoutImportSpecInnerList
           (do
             withGroup Other "import-all-cons" "" "" $ pretty ivar
@@ -1052,12 +1056,19 @@ instance Pretty ImportSpec where
         pretty ivar
         withLayout cfgLayoutImportSpecInnerList (flex vars') (vertical vars')
       where
-        flex vars' = withIndentFlex cfgIndentImportSpecInnerList $ do
+        flex vars' = withIndentFlex cfgIndentImportSpecInnerList $
             listAutoWrap Other "(" ")" "," vars'
 
         vertical vars' = withIndent cfgIndentImportSpecInnerList True $ do
-            groupV Other "(" ")" $
-              listVinternal Other "," vars'
+            (zeroSpec, oneSpec) <- getConfig (cfgOptionImportCompactSpecialization . cfgOptions)
+            let compactList ctx op open close sep xs =
+                    withGroupH ctx op open close . inter (operatorH ctx sep) $ map pretty xs
+            case vars' of
+              xs@[] | zeroSpec -> compactList Other "imp-compact-(" "(" ")" "," xs
+              xs@[_] | oneSpec -> compactList Other "imp-compact-(" "(" ")" "," xs
+              _ ->
+                groupV Other "(" ")" $
+                  listVinternal Other "," vars'
 
 instance Pretty CName
 
