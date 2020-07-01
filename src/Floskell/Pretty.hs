@@ -686,10 +686,13 @@ prettyConDecls condecls = do
         withOperatorFormattingV Declaration "|" (write "=") id
         listV' Declaration "|" condecls
 
+
 prettyForall :: (Annotated ast, Pretty ast) => [ast NodeInfo] -> Printer ()
 prettyForall vars = do
     write "forall "
-    inter space $ map pretty vars
+    inter space $ map pretty
+                $ sortBy
+                  (\l r -> nodeInfoSpan (ann l) `compare` nodeInfoSpan (ann r)) vars
     operator Type "."
 
 prettyTypesig :: (Annotated ast, Pretty ast)
@@ -742,7 +745,9 @@ prettyForallAdv mtyvarbinds mcontext mtyvarbinds' mcontext' p = do
     prettyForallContext layoutCt mtvb mct = do
       forM_ mtvb $ \tyvarbinds -> do
           write "forall "
-          inter space $ map pretty tyvarbinds
+          inter space $ map pretty
+                      $ sortBy
+                        (\l r -> nodeInfoSpan (ann l) `compare` nodeInfoSpan (ann r)) tyvarbinds
           withOperatorFormattingV Type "." (write "." >> space) id
       forM_ mct $ \context -> do
           case context of
