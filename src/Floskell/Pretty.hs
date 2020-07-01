@@ -1995,25 +1995,25 @@ instance Pretty Exp where
     prettyPrint (If _ expr expr' expr'') = withLayout cfgLayoutIf flex vertical
       where
         flex = do
-            write "if "
+            operatorH Expression "if"
             prettyOnside expr
             spaceOrNewline
-            write "then "
+            operatorH Expression "then"
             prettyOnside expr'
             spaceOrNewline
-            write "else "
+            operatorH Expression "else"
             prettyOnside expr''
 
         vertical = withIndentAfter cfgIndentIf
                                    (do
-                                        write "if "
+                                        operator Expression "if"
                                         prettyOnside expr)
                                    (do
                                         newline
-                                        write "then "
+                                        operator Expression "then"
                                         prettyOnside expr'
                                         newline
-                                        write "else "
+                                        operator Expression "else"
                                         prettyOnside expr'')
 
     prettyPrint (MultiIf _ guardedrhss) = do
