@@ -29,6 +29,7 @@ import           Floskell.Types
 
 import qualified Language.Haskell.Exts.Pretty as HSE
 import           Language.Haskell.Exts.Syntax
+import Data.Char (ord)
 
 -- | Like `span`, but comparing adjacent items.
 run :: (a -> a -> Bool) -> [a] -> ([a], [a])
@@ -164,9 +165,19 @@ printComment correction (Comment{..}, nextSpan) = do
             modify (\s -> s { psEolComment = True })
         InlineComment -> do
             write $ BS.replicate padding 32
-            write "{-"
-            string commentText
-            write "-}"
+            if srcSpanEndColumn commentSpan - 2 == srcSpanStartColumn commentSpan
+              then do
+                alCol <- getNextColumn
+                write "{-"
+                string $ case break ((==) 10 . ord) $ reverse commentText of
+                           (pre, _:rest) | all ((==) 32 . ord) pre -> reverse rest
+                           _                                       -> commentText
+                newline
+                column alCol $ write "-}"
+              else do
+                write "{-"
+                string commentText
+                write "-}"
             when (srcSpanEndLine commentSpan /= srcSpanStartLine nextSpan) $
                 modify (\s -> s { psEolComment = True })
         LineComment -> do
