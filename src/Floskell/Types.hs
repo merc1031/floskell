@@ -16,6 +16,8 @@ module Floskell.Types
     , psNewline
     , within
     , nestTypeLevel
+    , nestPatternLevel
+    , resetPatternLevel
     , initialPrintState
     , Config(..)
     , SrcSpan(..)
@@ -90,6 +92,7 @@ data PrintState =
                , psTypeLayout :: !TypeLayout
                , psWithinDeclaration :: !WithinDeclaration
                , psTypeNestLevel :: !Int
+               , psPatternNestLevel :: !Int
                }
 
 psLine :: PrintState -> Int
@@ -103,7 +106,7 @@ psNewline = (== 0) . Buffer.column . psBuffer
 
 initialPrintState :: Config -> PrintState
 initialPrintState config =
-    PrintState Buffer.empty 0 0 Map.empty config False Anything TypeFree OtherDeclaration 0
+    PrintState Buffer.empty 0 0 Map.empty config False Anything TypeFree OtherDeclaration 0 0
 
 within :: WithinDeclaration -> Printer a -> Printer a
 within w f = do
@@ -119,6 +122,22 @@ nestTypeLevel f = do
   modify' $ \s -> s { psTypeNestLevel = lvl + 1 }
   r <- f
   modify' $ \s -> s { psTypeNestLevel = lvl }
+  pure r
+
+nestPatternLevel :: Printer a -> Printer a
+nestPatternLevel f = do
+  lvl <- gets psPatternNestLevel
+  modify' $ \s -> s { psPatternNestLevel = lvl + 1 }
+  r <- f
+  modify' $ \s -> s { psPatternNestLevel = lvl }
+  pure r
+
+resetPatternLevel :: Printer a -> Printer a
+resetPatternLevel f = do
+  lvl <- gets psPatternNestLevel
+  modify' $ \s -> s { psPatternNestLevel = 0 }
+  r <- f
+  modify' $ \s -> s { psPatternNestLevel = lvl }
   pure r
 
 data CommentType = InlineComment | LineComment | PreprocessorDirective

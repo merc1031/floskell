@@ -78,6 +78,7 @@ data WithinDeclaration = ModuleDeclaration
                        | GuardDeclaration
                        | ExportDeclaration
                        | ClassDeclaration
+                       | CaseDeclaration
                        | OtherDeclaration
     deriving ( Eq, Ord, Bounded, Enum, Show, Generic )
 
@@ -218,6 +219,7 @@ data WithinLayout
                  , wlComprehensionLayout :: !Layout
                  , wlExportLayout :: !Layout
                  , wlClassLayout :: !Layout
+                 , wlCaseLayout :: !Layout
                  , wlOtherLayout :: !Layout
                  }
     deriving ( Generic )
@@ -238,6 +240,7 @@ simpleWithinLayout layout = WithinLayout { wlModuleLayout = layout
                                          , wlGuardLayout = layout
                                          , wlExportLayout = layout
                                          , wlClassLayout = layout
+                                         , wlCaseLayout = layout
                                          , wlOtherLayout = layout
                                          }
 
@@ -396,6 +399,15 @@ defaultConfig =
           )
         , ( ConfigMapKey (Just "module_where") (Just Declaration) Nothing
           , Whitespace WsBefore WsNone False Nothing
+          )
+        , ( ConfigMapKey (Just "if") (Just Expression) Nothing
+          , Whitespace WsNone WsAfter False (Just WsAfter)
+          )
+        , ( ConfigMapKey (Just "then") (Just Expression) Nothing
+          , Whitespace WsNone WsAfter False (Just WsAfter)
+          )
+        , ( ConfigMapKey (Just "else") (Just Expression) Nothing
+          , Whitespace WsNone WsAfter False (Just WsAfter)
           )
         ]
 
@@ -571,6 +583,7 @@ withinToText PatternDeclaration = "pattern"
 withinToText GuardDeclaration = "guard"
 withinToText ExportDeclaration = "export"
 withinToText ClassDeclaration = "class"
+withinToText CaseDeclaration = "case"
 withinToText OtherDeclaration = "other"
 
 textToWithin :: T.Text -> Maybe WithinDeclaration
@@ -586,6 +599,7 @@ textToWithin "pattern" = Just PatternDeclaration
 textToWithin "guard" = Just GuardDeclaration
 textToWithin "export" = Just ExportDeclaration
 textToWithin "class" = Just ClassDeclaration
+textToWithin "case" = Just CaseDeclaration
 textToWithin "other" = Just OtherDeclaration
 textToWithin _ = Nothing
 

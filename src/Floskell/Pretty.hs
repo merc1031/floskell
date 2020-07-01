@@ -2020,15 +2020,16 @@ instance Pretty Exp where
         write "if"
         withIndent cfgIndentMultiIf True . linedOnside $ map GuardedAltR guardedrhss
 
-    prettyPrint (Case _ expr alts) = do
-        write "case "
-        pretty expr
-        write " of"
-        if null alts
-            then write " { }"
-            else flexibleOneline . withIndent cfgIndentCase True
-                . withComputedTabStop stopRhs cfgAlignCase measureAlt alts $
-                lined alts
+    prettyPrint (Case _ expr alts) =
+        within CaseDeclaration $ do
+            write "case "
+            pretty expr
+            write " of"
+            if null alts
+                then write " { }"
+                else flexibleOneline . withIndent cfgIndentCase True
+                    . withComputedTabStop stopRhs cfgAlignCase measureAlt alts $
+                    lined alts
 
     prettyPrint (Do _ stmts) = flexibleOneline $ do
         write "do"
@@ -2320,7 +2321,7 @@ instance Pretty Exp where
 instance Pretty Alt where
     prettyPrint (Alt _ pat rhs mbinds) = do
         onside $ do
-            pretty pat
+            resetPatternLevel $ pretty pat
             atTabStop stopRhs
             pretty $ GuardedAlts rhs
         mapM_ prettyBinds mbinds
@@ -2332,112 +2333,137 @@ instance Pretty XAttr where
         pretty expr
 
 instance Pretty Pat where
-    prettyPrint (PVar _ name) = pretty name
-
-    prettyPrint (PLit _ sign literal) = do
-        case sign of
-            Signless _ -> return ()
-            Negative _ -> write "-"
-        pretty literal
-
-    prettyPrint (PNPlusK _ name integer) = do
-        pretty name
-        operator Pattern "+"
-        int $ fromIntegral integer
-
-    prettyPrint p@(PInfixApp _ _ qname _) =
-        prettyInfixApp opName Pattern $ flattenInfix flattenPInfixApp p
+    prettyPrint pa = nestPatternLevel $ prettyInner pa
       where
-        flattenPInfixApp (PInfixApp _ lhs qname' rhs) =
-            if compareAST qname qname' == EQ
-            then Just (lhs, QConOp noNodeInfo qname', rhs)
-            else Nothing
-        flattenPInfixApp _ = Nothing
+        prettyInner (PVar _ name) = pretty name
 
-    prettyPrint (PApp _ qname pats) = prettyApp' cfgLayoutPatternApp cfgIndentPatternApp True qname pats
+        prettyInner (PLit _ sign literal) = do
+            case sign of
+                Signless _ -> return ()
+                Negative _ -> write "-"
+            pretty literal
 
-    prettyPrint (PTuple _ boxed pats) = case boxed of
-        Boxed -> list Pattern "(" ")" "," pats
-        Unboxed -> list Pattern "(#" "#)" "," pats
+        prettyInner (PNPlusK _ name integer) = do
+            pretty name
+            operator Pattern "+"
+            int $ fromIntegral integer
 
-#if MIN_VERSION_haskell_src_exts(1,20,0)
-    prettyPrint (PUnboxedSum _ before after pat) = group Pattern "(#" "#)"
-        . inter space $ replicate before (write "|") ++ [ pretty pat ]
-        ++ replicate after (write "|")
-#endif
+        prettyInner p@(PInfixApp _ _ qname _) =
+            prettyInfixApp opName Pattern $ flattenInfix flattenPInfixApp p
+          where
+            flattenPInfixApp (PInfixApp _ lhs qname' rhs) =
+                if compareAST qname qname' == EQ
+                then Just (lhs, QConOp noNodeInfo qname', rhs)
+                else Nothing
+            flattenPInfixApp _ = Nothing
 
-    prettyPrint (PList _ pats) = list Pattern "[" "]" "," pats
+        prettyInner (PApp _ qname pats) = prettyApp' cfgLayoutPatternApp cfgIndentPatternApp True qname pats
 
-    prettyPrint (PParen _ pat) = parens $ pretty pat
-
-    prettyPrint (PRec _ qname patfields) = do
-        withOperatorFormatting Pattern "record" (pretty qname) id
-        list Pattern "{" "}" "," patfields
-
-    prettyPrint (PAsPat _ name pat) = do
-        pretty name
-        operator Pattern "@"
-        pretty pat
-
-    prettyPrint (PWildCard _) = write "_"
-
-    prettyPrint (PIrrPat _ pat) = do
-        write "~"
-        pretty pat
-
-    prettyPrint (PatTypeSig _ pat ty) = prettyTypesig Pattern [ pat ] ty
-
-    prettyPrint (PViewPat _ expr pat) = do
-        pretty expr
-        operator Pattern "->"
-        pretty pat
-
-    prettyPrint (PRPat _ rpats) = list Pattern "[" "]" "," rpats
-
-    prettyPrint (PXTag _ xname pxattrs mpat pats) = do
-        write "<"
-        pretty xname
-        forM_ pxattrs $ withPrefix space pretty
-        mayM_ mpat $ withPrefix space pretty
-        write ">"
-        mapM_ pretty pats
-        write "<"
-        pretty xname
-        write ">"
-
-    prettyPrint (PXETag _ xname pxattrs mpat) = do
-        write "<"
-        pretty xname
-        forM_ pxattrs $ withPrefix space pretty
-        mayM_ mpat $ withPrefix space pretty
-        write "/>"
-
-    prettyPrint (PXPcdata _ str) = string str
-
-    prettyPrint (PXPatTag _ pat) = do
-        write "<%"
-        pretty pat
-        write "%>"
-
-    prettyPrint (PXRPats _ rpats) = do
-        write "<["
-        inter space $ map pretty rpats
-        write "%>"
+        prettyInner (PTuple _ boxed pats) = do
+          withinDeclaration <- gets psWithinDeclaration
+          lvl <- gets psPatternNestLevel
+          let listy = case (withinDeclaration, lvl) of
+                        (CaseDeclaration, 1) -> listH
+                        _                    -> list
+          case boxed of
+            Boxed -> listy Pattern "(" ")" "," pats
+            Unboxed -> listy Pattern "(#" "#)" "," pats
 
 #if MIN_VERSION_haskell_src_exts(1,20,0)
-    prettyPrint (PSplice _ splice) = pretty splice
+        prettyInner (PUnboxedSum _ before after pat) = group Pattern "(#" "#)"
+            . inter space $ replicate before (write "|") ++ [ pretty pat ]
+            ++ replicate after (write "|")
 #endif
 
-    prettyPrint (PQuasiQuote _ str str') = do
-        write "[$"
-        string str
-        write "|"
-        string str'
-        write "|]"
+        prettyInner (PList _ pats) = do
+            withinDeclaration <- gets psWithinDeclaration
+            lvl <- gets psPatternNestLevel
+            let listy = case (withinDeclaration, lvl) of
+                          (CaseDeclaration, 1) -> listH
+                          _                    -> list
+            listy Pattern "[" "]" "," pats
 
-    prettyPrint (PBangPat _ pat) = do
-        write "!"
-        pretty pat
+        prettyInner (PParen _ pat) = parens $ pretty pat
+
+        prettyInner (PRec _ qname patfields) = do
+            withinDeclaration <- gets psWithinDeclaration
+            lvl <- gets psPatternNestLevel
+            let listy = case (withinDeclaration, lvl) of
+                          (CaseDeclaration, 1) -> listH
+                          _                    -> list
+            withOperatorFormatting Pattern "record" (pretty qname) id
+            listy Pattern "{" "}" "," patfields
+
+        prettyInner (PAsPat _ name pat) = do
+            pretty name
+            operator Pattern "@"
+            pretty pat
+
+        prettyInner (PWildCard _) = write "_"
+
+        prettyInner (PIrrPat _ pat) = do
+            write "~"
+            pretty pat
+
+        prettyInner (PatTypeSig _ pat ty) = prettyTypesig Pattern [ pat ] ty
+
+        prettyInner (PViewPat _ expr pat) = do
+            pretty expr
+            operator Pattern "->"
+            pretty pat
+
+        prettyInner (PRPat _ rpats) = do
+            withinDeclaration <- gets psWithinDeclaration
+            lvl <- gets psPatternNestLevel
+            let listy = case (withinDeclaration, lvl) of
+                          (CaseDeclaration, 1) -> listH
+                          _                    -> list
+            listy Pattern "[" "]" "," rpats
+
+        prettyInner (PXTag _ xname pxattrs mpat pats) = do
+            write "<"
+            pretty xname
+            forM_ pxattrs $ withPrefix space pretty
+            mayM_ mpat $ withPrefix space pretty
+            write ">"
+            mapM_ pretty pats
+            write "<"
+            pretty xname
+            write ">"
+
+        prettyInner (PXETag _ xname pxattrs mpat) = do
+            write "<"
+            pretty xname
+            forM_ pxattrs $ withPrefix space pretty
+            mayM_ mpat $ withPrefix space pretty
+            write "/>"
+
+        prettyInner (PXPcdata _ str) = string str
+
+        prettyInner (PXPatTag _ pat) = do
+            write "<%"
+            pretty pat
+            write "%>"
+
+        prettyInner (PXRPats _ rpats) = do
+            write "<["
+            inter space $ map pretty rpats
+            write "%>"
+
+#if MIN_VERSION_haskell_src_exts(1,20,0)
+        prettyInner (PSplice _ splice) = pretty splice
+#endif
+
+        prettyInner (PQuasiQuote _ str str') = do
+            write "[$"
+            string str
+            write "|"
+            string str'
+            write "|]"
+
+        prettyInner (PBangPat _ pat) = do
+            write "!"
+            pretty pat
 
 instance Pretty PatField where
     prettyPrint (PFieldPat _ qname pat) = do
