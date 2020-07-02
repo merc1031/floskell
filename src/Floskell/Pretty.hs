@@ -490,7 +490,7 @@ measureGuardedRhs (GuardedRhs _ [stmt] _) = measure' go
     go =
       within GuardDeclaration $ do
         operatorSectionR Pattern "|" $ write "|"
-        (pretty stmt)
+        pretty stmt
 measureGuardedRhs (GuardedRhs _ _ _) = do
     return Nothing
 
@@ -1691,14 +1691,15 @@ instance Pretty GuardedRhs where
       where
         flex = do
             operatorSectionR Pattern "|" $ write "|"
-            inter comma $ map pretty stmts
+            inter (operatorH Pattern ",") $ map pretty stmts
             atTabStop stopGuardedRhs
             operator Declaration "="
             pretty expr
 
         vertical = do
+            col <- getNextColumn
             operatorSectionR Pattern "|" $ write "|"
-            inter comma $ map pretty stmts
+            inter (column' col $ operator Pattern ",") $ map pretty stmts
             atTabStop stopGuardedRhs
             operatorV Declaration "="
             pretty expr
