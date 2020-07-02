@@ -487,11 +487,12 @@ measureAlt _ = return Nothing
 measureGuardedRhs :: GuardedRhs NodeInfo -> Printer (Maybe [Int])
 measureGuardedRhs (GuardedRhs _ [stmt] _) = measure' go
   where
-    go = do
+    go =
       within GuardDeclaration $ do
         operatorSectionR Pattern "|" $ write "|"
         (pretty stmt)
-measureGuardedRhs _ = return Nothing
+measureGuardedRhs (GuardedRhs _ _ _) = do
+    return Nothing
 
 measurePragma :: ModulePragma NodeInfo -> Printer (Maybe [Int])
 measurePragma p = (fmap . fmap . fmap $ (\x -> x - 4)) $ measure' go
@@ -1680,9 +1681,9 @@ instance Pretty Rhs where
 
     prettyPrint (GuardedRhss _ guardedrhss) =
         within GuardDeclaration $
-            withIndent cfgIndentMultiIf True $
-              withComputedTabStop stopGuardedRhs cfgAlignMultiIfRhs measureGuardedRhs guardedrhss $
-              linedOnside guardedrhss
+            withIndent cfgIndentMultiIf True $ do
+              withComputedTabStopEager stopGuardedRhs cfgAlignMultiIfRhs measureGuardedRhs guardedrhss $
+                  linedOnside guardedrhss
 
 instance Pretty GuardedRhs where
     prettyPrint (GuardedRhs _ stmts expr) =
