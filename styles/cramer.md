@@ -1023,12 +1023,71 @@ data Expr :: * -> * where
   deriving (Show)
 ```
 
+``` haskell
+data KafkaCfg
+  = KafkaCfg { kcBrokers :: ![ T.Text ]
+              , kcTimeoutMillis         :: !Timeout
+              , kcBatchSize             :: !BatchSize
+                , kcOffsetReset           :: !OffsetReset
+              , kcMaxPollIntervalMillis :: !(Maybe Integer) } deriving
+                            ( Eq , Show )
+```
+
+``` haskell
+{-# LANGUAGE ExistentialQuantification #-}
+
+data Command m
+  = Simple !T.Text !(Handler T.Text m)
+  | forall a. Re !T.Text !(FullRegexMatch -> Maybe a) !(Handler a m)
+```
+
+``` haskell
+{-# LANGUAGE ExistentialQuantification #-}
+
+data DispatchableCommand m
+  = DispatchableSimple !(T.Text, T.Text) !T.Text !(Handler T.Text m)
+  | forall a. DispatchableRe !FullRegexMatch !T.Text !(FullRegexMatch -> Maybe a) !(Handler a m)
+```
+
+``` haskell
+{-# LANGUAGE RankNTypes #-}
+
+type NatToIO m
+  = (forall a. m a -> IO a)
+```
+
 ## TypeSignatures
 
 ``` haskell
 
 functionDefinition :: forall a b c. (C a, B a ~ C b) => C a -> (forall z k. (B k, B k ~ B z) => (forall d. C d => C d -> r) -> C a) -> (r -> a)
 functionDefinition = undefined
+```
+
+``` haskell
+{-# LANGUAGE RankNTypes #-}
+
+hoistGAppMToIO :: forall m s. (KafkaConsumer -> s) -> (forall a. m a -> s -> IO a)
+                                                   -> KafkaConsumer
+                                                   -> (forall a. m a -> IO a)
+hoistGAppMToIO mkState runner kc = go
+    where
+    go :: m a -> IO a
+    go act = runner act $ mkState kc
+```
+
+``` haskell
+{-# LANGUAGE RankNTypes #-}
+
+defer :: ((defer -> s) -> (forall a. m a -> s -> n a) -> defer -> act -> act2) -> (defer -> s)
+                                                                               -> (forall a. m a -> s -> n a)
+                                                                               -> (arg -> act)
+                                                                               -> defer
+                                                                               -> arg
+                                                                               -> act2
+defer hoist mkState runner = go
+  where
+    go act kc y = hoist mkState runner kc (act y)
 ```
 
 ## FunctionBodies
@@ -1141,6 +1200,12 @@ functionDefinition R { asd, aLongerField , .. } = undefined
 {-# LANGUAGE RecordWildCards #-}
 
 functionDefinition (R { asd , aLongerField , .. }) = undefined
+```
+
+``` haskell
+{-# LANGUAGE RecordWildCards #-}
+
+function = pure KafkaCfg { ..}
 ```
 
 ## Constructs
@@ -1291,6 +1356,48 @@ instance Data () where
     Eq :: Expr Int -> Expr Int -> Expr Bool
 ```
 
+``` haskell
+newtype RecordableTopicPartition = RecordableTopicPartition { unRecordableTopicPartition :: TopicPartition }
+      deriving Show
+```
+
+Where with no body means mdecls is Just []
+
+``` haskell
+{-# LANGUAGE MultiParamTypeClasses #-}
+
+-- | 'MonadHandler' adds together 'MonadRoute', some extra capabilities and the ability to use <|>
+class (Alternative m, MonadRoute s m, SupportsHandler m, SupportsChatBack m) =>  MonadHandler s m where
+```
+
+Missing where means mdecls is Nothing
+
+``` haskell
+{-# LANGUAGE MultiParamTypeClasses #-}
+
+-- | 'MonadHandler' adds together 'MonadRoute', some extra capabilities and the ability to use <|>
+class (Alternative m, MonadRoute s m, SupportsHandler m, SupportsChatBack m) =>  MonadHandler s m
+```
+
+``` haskell
+{-# LANGUAGE MultiParamTypeClasses #-}
+
+instance
+  ( MonadIO m
+  , MonadFail m
+  , Alternative (AppM' s m)
+  , MonadThrow m
+  , MonadBaseControl IO m
+  , HasRedisConn s
+  , HasChatState s
+  , HasPost s
+  , HasSendToChannel s
+  , HasConsulClient s
+  , HasUserMessage s
+  , HasAcls s
+  ) => MonadHandler s (AppM' s m) where
+```
+
 ### RecConstr and RecUpdate
 
 ``` haskell
@@ -1365,6 +1472,59 @@ foo = bar { x = 1 -- the one
 {-# LANGUAGE ApplicativeDo #-}
 ```
 
+### ImportSpecList
+
+``` haskell
+{-# LANGUAGE PatternSynonyms #-}
+
+import Style.Haskell.Example (
+                              Point(coord2X,coord2Y,coord3X,coord3Y,coord3Z)
+                             , Enum(..)
+                             ,  Either(..)
+                             ,  Buffer
+                             , type (+)
+                             , pattern Awesome
+                             , hello
+                             , welcome
+                             , alpha
+                             )
+```
+
+``` haskell
+import           Text.Regex.TDFA.Text ()
+```
+
+``` haskell
+import Text.Regex.TDFA.Text (alpha)
+```
+
+### ExportSpecList
+
+``` haskell
+{-# LANGUAGE PatternSynonyms #-}
+
+module Style.Haskell.Example
+        ( -- * Types
+          Point(coord2X,coord2Y,coord3X,coord3Y,coord3Z)
+        , Enum(..)
+        ,  Either(..)
+        -- ** Before G
+        ,  G(a ,.., Z) -- ^ On G
+        -- ** After G
+        , Buffer
+        , type (+)
+        -- | Some docs
+        , pattern Awesome
+        , module M
+          -- * Functions
+        , hello
+          -- ** Internal Functions
+        , welcome
+        , alpha
+        -- $doc
+        )where
+```
+
 ### Tuple, UnboxedSum, List
 
 ``` haskell
@@ -1429,16 +1589,16 @@ fn = 0b011110
 ```
 
 #### HexFloatLiterals
-HSE Does not support these at all . The last 2 cases are pattently ambiguous and broken
 
 ``` haskell
 {-# LANGUAGE HexFloatLiterals #-}
 
--- fn = 0x1.1
--- fn = 0x0.1p-4
--- fn = 0x0.1p12
--- fn = 0xF.FF
--- fn = 0xF.FFp-12
+fn = 0x1.1
+fn = 0x0.1p-4
+fn = 0x0.1p12
+fn = 0xF.FF
+fn = 0xF.FFp-12
+fn = f 0xFFp12
 ```
 
 ``` haskell
@@ -1473,6 +1633,418 @@ fn = let t = 0x3ff_00_00
          b = 0b01_0000_0000
          e = 6.022_140_857e+23
       in (t, b , e)
+```
+
+## SpecialFormatting
+
+### NestedDo
+
+``` haskell
+fn = do a <- aFunction
+        val <- anotherFunction a
+        (longerValue, ked) <- yetMoreFunctions
+
+        pure ()
+```
+
+``` haskell
+fn = do a <- aFunction
+        val <- anotherFunction a
+        (longerValue, ked) <- yetMoreFunctions $ do v <- morefn val
+                                                    ret <- pure 1
+                                                    comboBreaker <- function v ret
+
+                                                    pure comboBreaker
+
+        pure ()
+```
+
+``` haskell
+fn = do a <- aFunction
+        val <- anotherFunction a
+        (longerValue, ked) <- yetMoreFunctions $ do v <- morefn val
+                                                    ret <- pure 1
+                                                    comboBreaker <- function v ret
+
+                                                    pure comboBreaker
+
+        andFinallyTheLastButNotLeast <- drawFromAnother longerValue
+        pure ()
+```
+
+### Monoids
+
+``` haskell
+-- Global consumer properties
+consumerProps
+  :: forall m s. ( SupportsKafka m, SupportsLogging m
+                 , SupportsRedis m
+                 , SupportsTime m
+                   , MonadBaseControl IO m )
+                => KafkaCfg -> (KafkaConsumer -> s)
+                 -> (forall a. m a -> s -> IO a) -> T.Text
+                -> ConsumerProperties
+consumerProps KafkaCfg { .. }
+              mkState
+               runner
+               group = brokersList [ BrokerAddress k | k <- kcBrokers ]
+                      <> groupId (ConsumerGroupId group) <> noAutoCommit
+                      <> setCallback (rebalanceCallback (defer hoistGAppMToIO mkState runner (redisRebalanceCallback group)))
+                       <> setCallback (offsetCommitCallback printingOffsetCallback)
+                      <> setCallback (logCallback printingLogCallback)
+                       <> debugOptions [] <> logLevel KafkaLogDebug <> extraProps extraPropsCfg
+  where extraPropsCfg = fromList $ catMaybes
+                        [("max.poll.interval.ms", ) . T.pack . show <$> kcMaxPollIntervalMillis]
+```
+
+### PatternGuards
+
+``` haskell
+{-# LANGUAGE PatternGuards #-}
+
+-- | A haddock
+-- with another line
+fn :: AValue -> Maybe AReturnValue
+prometheus app req respond | Wai.requestMethod req == HTTP.methodGet
+                           , 1024 <- reqBodyTrunc req
+                           , Wai.pathInfo req == prometheusEndPoint =
+                              -- XXX: Should probably be "metrics" rather than "prometheus", since
+                              -- "prometheus" can be confused with actual prometheus.
+                              if prometheusInstrumentPrometheus then instrumentApp "prometheus"
+                                                                    (const respondWithMetrics) req respond
+                                                                else respondWithMetrics respond
+                           | prometheusInstrumentApp = instrumentApp "app" app req respond
+                           | otherwise               = app req respond
+```
+
+### Guard Styles
+
+``` haskell
+-- prometheus (D app) req respond = case () of _ | prometheusInstrumentApp -> instrumentApp "app" app req respond
+--                                               | otherwise  -> app req respond
+```
+
+All the guards
+
+``` haskell
+{-# LANGUAGE MultiWayIf #-}
+
+-- | A haddock
+-- with another line
+fn :: AValue -> Maybe AReturnValue
+prometheus (C app) req respond = if | prometheusInstrumentApp -> instrumentApp "app" app req respond
+                                    | otherwise -> app req respond
+prometheus (B app) req respond | prometheusInstrumentApp = instrumentApp "app" app req respond
+                               | otherwise  = app req respond
+-- prometheus (D app) req respond = case () of _ | prometheusInstrumentApp -> instrumentApp "app" app req respond
+--                                               | otherwise  -> app req respond
+```
+
+``` haskell
+  parseJSON
+    = withArray "Labels"
+    $ \a -> case V.toList a of
+    []                  -> pure
+      $ Labels0 ()
+    [a1]                -> uncurry Labels1 <$> pairTo a1
+    ls   | length ls == 2 -> conv Labels2 ls listTo2Tuple
+    ls   | length ls == 3 -> conv Labels3 ls listTo3Tuple
+    ls   | length ls == 4 -> conv Labels4 ls listTo4Tuple
+    ls   | length ls == 5 -> conv Labels5 ls listTo5Tuple
+    ls   | length ls == 6 -> conv Labels6 ls listTo6Tuple
+    ls   | length ls == 7 -> conv Labels7 ls listTo7Tuple
+    ls   | length ls == 8 -> conv Labels8 ls listTo8Tuple
+    ls   | length ls == 9 -> conv Labels9 ls listTo9Tuple
+    _                   -> fail "Not a legal label"
+
+```
+
+### ApplicativeConstructs
+
+``` haskell
+fn = AppArgs <$> switch (help "Some help" <> long "an-arg")
+  <*> strOption (long "another-arg")
+  <*> option auto (long "last-arg" <> value 8080 <> showDefault)
+```
+
+## Regression
+
+Leading inline comments break syntax
+
+``` haskell
+mkMetric
+  = let
+      {- Gauges are more complicated in the sidecar since they need to account for different aggregation strategies -}
+      t = 1 in t
+
+mkMetric = do
+              {- Gauges are more complicated in the sidecar since they need to account for different aggregation strategies -}
+              t <- fn 1
+              pure ()
+
+data R = R { rField  :: Stuff
+             {- Gauges are more complicated in the sidecar since they need to account for different aggregation strategies -}
+           , rField2 :: Stuff }
+
+{- Gauges are more complicated in the sidecar since they need to account for different aggregation strategies -}
+mkMetric = do t <- fn 1
+              pure ()
+```
+
+``` haskell
+mkMetric
+  = do
+  {-
+     Gauges are more complicated in the sidecar since they need to account for different aggregation strategies
+     based on the clients knowledge of the values being measured.
+
+     Since most of this is unknown until the client message comes in cleanup and aggregation need
+     to close over some IORef's that need to be kept pruned.
+  -}
+  createNow <- realToFrac <$> getPOSIXTime
+
+  pure ()
+```
+
+``` haskell
+mkMetric
+  = let
+      {-
+        Gauges are more complicated in the sidecar since they need to account for different aggregation strategies
+        based on the clients knowledge of the values being measured.
+
+        Since most of this is unknown until the client message comes in cleanup and aggregation need
+        to close over some IORef's that need to be kept pruned.
+      -}
+      t = 1 in t
+```
+
+``` haskell
+mkMetric
+  = let
+      {-
+        Gauges are more complicated in the sidecar since they need to account for different aggregation strategies
+        based on the clients knowledge of the values being measured.
+
+        Since most of this is unknown until the client message comes in cleanup and aggregation need
+        to close over some IORef's that need to be kept pruned. -}
+      t = 1 in t
+```
+
+``` haskell
+mkMetric
+  = let
+      {- Gauges are more complicated in the sidecar since they need to account for different aggregation strategies
+        based on the clients knowledge of the values being measured.
+
+        Since most of this is unknown until the client message comes in cleanup and aggregation need
+        to close over some IORef's that need to be kept pruned. -}
+      t = 1 in t
+```
+
+Idempotance failing
+
+``` haskell
+data ABody
+  = forall shape body
+  . ( KnownSymbol shape
+    , ToJSON (DataContainer shape body)
+    , ToJSON (RelationsContainer shape body)
+    , ToJSON (Relations body)
+    , ToJSON (Body shape body)
+    ) => ABody (Body shape body)
+```
+
+Simple nested import
+
+``` haskell
+import           Control.Applicative
+  ( Alternative ((<|>))
+  )
+```
+
+This case involved some hacks. list wants to split tuple, which makes illegal syntax. hack around it
+
+``` haskell
+reactToEvent protocolState event
+  = case (protocolState, event) of
+  (NormalState,MessageEvent (Message _ (Right userMessage@(UserMessage channel_ user_ text_ NotMe)))) -> do
+    pure ()
+```
+
+``` haskell
+{-# LANGUAGE MultiWayIf #-}
+
+reactToEvent protocolState event
+  = if | (protocolState, event) == (NormalState, MessageEvent (Message 2 (Right (UserMessage "as" 2 "sd" NotMe)))) -> do pure ()
+```
+
+``` haskell
+reactToEvent protocolState event
+  | (protocolState, event) == (NormalState, MessageEvent (Message 2 (Right (UserMessage "as" 2 "sd" NotMe)))) = do pure ()
+```
+
+``` haskell
+reactToEvent (NormalState, MessageEvent (Message _ (Right userMessage@(UserMessage channel_ user_ text_ NotMe)))) = do pure ()
+```
+
+This case involved some hacks. list wants to split tuple, which makes illegal syntax. hack around it
+
+``` haskell
+{-| Builds a Fold that consumes messages coming from the Slack RTM connection.
+
+-}
+eventFold
+  :: TChan (Text,UserMessage,Text -> IO ())
+  -> ChatState
+  -> FoldM IO Event ()
+eventFold pool cs
+  = FoldM reactToEvent (pure InitialState) (\_ -> pure ())
+  where
+    reactToEvent protocolState event
+      = case (protocolState, event) of
+      (NormalState,MessageEvent (Message _ (Right userMessage@(UserMessage channel_ user_ text_ NotMe)))) -> do
+        pure ()
+```
+
+This case involved some hacks. list wants to split tuple, which makes illegal syntax. hack around it
+
+``` haskell
+{-| Builds a Fold that consumes messages coming from the Slack RTM connection.
+
+-}
+eventFold
+  :: TChan (Text,UserMessage,Text -> IO ())
+  -> ChatState
+  -> FoldM IO Event ()
+eventFold pool cs
+  = FoldM reactToEvent (pure InitialState) (\_ -> pure ())
+  where
+    reactToEvent protocolState event
+      = case (protocolState, event) of
+      (InitialState,HelloEvent) ->
+        pure NormalState
+      (InitialState,_) ->
+        throwIO (userError "wrong start")
+      (NormalState,MessageEvent (Message _ (Right userMessage@(UserMessage channel_ user_ text_ NotMe)))) -> do
+        currentcs <- readTVarIO (chatVar cs)
+        let
+          whoami
+            = identity (self currentcs)
+          send
+            = sendMessageToChannel cs channel_
+        if has (ims.ix channel_) currentcs
+          then -- IM message?
+            case isDirectedTo text_ of
+              Just (target,text')
+                | user_ /= whoami && target == whoami ->
+                  atomically (writeTChan pool (text',userMessage, send))
+              Nothing
+                | user_ /= whoami ->
+                  atomically (writeTChan pool (text_,userMessage,send))
+              _ -> pure ()
+          else -- message in general channel?
+            case isDirectedTo text_ of
+              Just (target,text')
+                | user_ /= whoami && target == whoami ->
+                  atomically (writeTChan pool (text',userMessage, send . addressTo user_))
+              _ -> pure ()
+        pure NormalState
+      _ ->
+        pure NormalState
+```
+
+``` haskell
+-- | Expose Prometheus metrics and instrument an application with some basic
+-- metrics (e.g. request latency).
+prometheus
+  :: PrometheusSettings
+  -> Wai.Middleware
+prometheus PrometheusSettings {..} app req respond
+  | Wai.requestMethod req == HTTP.methodGet
+     && Wai.pathInfo req == prometheusEndPoint =
+    -- XXX: Should probably be "metrics" rather than "prometheus", since
+    -- "prometheus" can be confused with actual prometheus.
+    if prometheusInstrumentPrometheus
+    then instrumentApp "prometheus"
+      (const respondWithMetrics) req respond
+    else respondWithMetrics respond
+  | prometheusInstrumentApp = instrumentApp "app" app req respond
+  | otherwise = app req respond
+```
+
+### RHS
+
+``` haskell
+  case slackUsers of
+    (toList -> [slack])                    -> let
+                                                prunedSlack
+                                                  = if T.isPrefixOf "@" slack
+                                                  then T.tail slack
+                                                  else slack
+
+                                                invisible
+                                                  :: T.Text
+                                                  -> T.Text
+                                                  -> T.Text
+                                                invisible k v
+                                                  = [fmt|[]({k}:{v})|]
+
+                                                metaBody
+                                                  = T.intercalate ""
+                                                  [ invisible k v
+                                                  | (k, v)
+                                                   <- [ ( "uuid"
+                                                        , UUID.toText uuid
+                                                        )
+                                                      , ( "message_consume_time"
+                                                        , T.pack
+                                                            $ show time
+                                                        )
+                                                      , ( "kafka_partition"
+                                                        , T.pack
+                                                            $ show
+                                                            $ crPartition
+                                                            kafkaMsg
+                                                        )
+                                                      , ( "kafka_offset"
+                                                        , T.pack
+                                                            $ show
+                                                            $ crOffset kafkaMsg
+                                                        )
+                                                      , ("user", dkeUser)
+                                                      , ( "slack_username"
+                                                        , prunedSlack
+                                                        )
+                                                      ]
+                                                  ]
+
+                                                fullMessage
+                                                  = [fmt|{dkeMessage}\n{dkeBody}|]
+
+                                                finalMessage
+                                                  = maybe fullMessage
+                                                  (\run -> [fmt|{fullMessage}\nCausal Run Url: {run}|])
+                                                  dkeRunTrigger
+
+                                                debugMessage
+                                                  = [fmt|{groupName}\n{finalMessage}\n{metaBody}|]
+                                              in
+                                                findTarget
+                                                (TargetChannel prunedSlack)
+                                                 >>= \case
+                                                Just ch -> realSendToChannel ch
+                                                  finalMessage
+                                                   >> realPostDebug debugMessage
+                                                   >> realIncrCounter
+                                                  mUserNotificationsSent
+                                                Nothing -> realPostDebug
+                                                  [fmt|No slack user found: {prunedSlack}|]
+                                                   >> realIncrCounter
+                                                  mUserNotificationsNoSlackFound
+    users               | length users > 1 -> realPostDebug
+      [fmt|Too many slack users found: {dkeUser} : {users:s}|]
+       >> realIncrCounter mUserNotificationsTooManyUsersFound
 ```
 
 ## Full Module
