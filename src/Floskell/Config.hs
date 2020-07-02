@@ -128,6 +128,7 @@ data AlignConfig =
     AlignConfig { cfgAlignLimits            :: !(Int, Int)
                 , cfgAlignCase              :: !Bool
                 , cfgAlignClass             :: !Bool
+                , cfgAlignDoLeftArrow       :: !Bool
                 , cfgAlignImportModule      :: !Bool
                 , cfgAlignImportSpec        :: !Bool
                 , cfgAlignImportAsMin       :: !(Maybe Int)
@@ -144,6 +145,7 @@ instance Default AlignConfig where
     def = AlignConfig { cfgAlignLimits            = (10, 25)
                       , cfgAlignCase              = False
                       , cfgAlignClass             = False
+                      , cfgAlignDoLeftArrow       = False
                       , cfgAlignImportModule      = False
                       , cfgAlignImportSpec        = False
                       , cfgAlignImportAsMin       = Nothing

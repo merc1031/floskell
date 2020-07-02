@@ -16,6 +16,7 @@ import           Data.ByteString              ( ByteString )
 import qualified Data.ByteString              as BS
 import qualified Data.ByteString.Char8        as BS8
 import qualified Data.ByteString.Lazy         as BL
+import           Data.Char                    ( ord )
 import           Data.List                    ( groupBy, sortBy, sortOn )
 import           Data.Maybe                   ( catMaybes, fromMaybe )
 import qualified Data.Set                     as Set
@@ -29,7 +30,6 @@ import           Floskell.Types
 
 import qualified Language.Haskell.Exts.Pretty as HSE
 import           Language.Haskell.Exts.Syntax
-import Data.Char (ord)
 
 -- | Like `span`, but comparing adjacent items.
 run :: (a -> a -> Bool) -> [a] -> ([a], [a])
@@ -61,6 +61,9 @@ stopGuardedRhs = TabStop "guarded-rhs"
 
 stopModulePragma :: TabStop
 stopModulePragma = TabStop "module-pragma"
+
+stopDoLeftArrow :: TabStop
+stopDoLeftArrow = TabStop "do-left-arrow"
 
 flattenApp :: Annotated ast
            => (ast NodeInfo -> Maybe (ast NodeInfo, ast NodeInfo))
@@ -505,16 +508,44 @@ measurePragma p = (fmap . fmap . fmap $ (\x -> x - 4)) $ measure' go
   where
     go = pretty p
 
+measureDoGenerators :: Stmt NodeInfo -> Printer (Maybe [Int])
+measureDoGenerators (Generator _ pat _) = measure' go
+  where
+    go = pretty pat
+measureDoGenerators _ = return Nothing
+
 withComputedTabStop :: TabStop
                     -> (AlignConfig -> Bool)
                     -> (a -> Printer (Maybe [Int]))
                     -> [a]
                     -> Printer b
                     -> Printer b
-withComputedTabStop name predicate fn xs p = do
+withComputedTabStop =
+    withComputedTabStop' sequence
+
+withComputedTabStopEager :: TabStop
+                         -> (AlignConfig -> Bool)
+                         -> (a -> Printer (Maybe [Int]))
+                         -> [a]
+                         -> Printer b
+                         -> Printer b
+withComputedTabStopEager =
+    withComputedTabStop' (go . catMaybes)
+  where
+    go [] = Nothing
+    go xs = Just xs
+
+withComputedTabStop' :: ([Maybe [Int]] -> Maybe [[Int]])
+                     -> TabStop
+                     -> (AlignConfig -> Bool)
+                     -> (a -> Printer (Maybe [Int]))
+                     -> [a]
+                     -> Printer b
+                     -> Printer b
+withComputedTabStop' coallesce name predicate fn xs p = do
     enabled <- getConfig (predicate . cfgAlign)
     (limAbs, limRel) <- getConfig (cfgAlignLimits . cfgAlign)
-    mtabss <- sequence <$> traverse fn xs
+    mtabss <- coallesce <$> traverse fn xs
     let tab = do
             tabss <- mtabss
             let tabs = concat tabss
@@ -2060,7 +2091,9 @@ instance Pretty Exp where
 
     prettyPrint (Do _ stmts) = flexibleOneline $ do
         write "do"
-        withIndent cfgIndentDo True $ linedOnside stmts
+        withIndent cfgIndentDo True $
+            withComputedTabStopEager stopDoLeftArrow cfgAlignDoLeftArrow measureDoGenerators stmts $
+                linedOnside stmts
 
     prettyPrint (MDo _ stmts) = flexibleOneline $ do
         write "mdo"
@@ -2579,6 +2612,7 @@ instance Pretty QualStmt where
 instance Pretty Stmt where
     prettyPrint (Generator _ pat expr) = do
         pretty pat
+        atTabStop stopDoLeftArrow
         operator Expression "<-"
         pretty expr
 
