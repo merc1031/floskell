@@ -59,6 +59,9 @@ stopRhs = TabStop "rhs"
 stopGuardedRhs :: TabStop
 stopGuardedRhs = TabStop "guarded-rhs"
 
+stopGuardedUnguardedRhs :: TabStop
+stopGuardedUnguardedRhs = TabStop "guarded-unguarded-rhs"
+
 stopModulePragma :: TabStop
 stopModulePragma = TabStop "module-pragma"
 
@@ -484,15 +487,49 @@ measureAlt :: Alt NodeInfo -> Printer (Maybe [Int])
 measureAlt (Alt _ pat _ Nothing) = measure' (pretty pat)
 measureAlt _ = return Nothing
 
-measureGuardedRhs :: GuardedRhs NodeInfo -> Printer (Maybe [Int])
-measureGuardedRhs (GuardedRhs _ [stmt] _) = measure' go
+measureGuardedRhs :: (LayoutContext -> ByteString -> Printer () -> Printer ()) -> GuardedRhs NodeInfo -> Printer (Maybe [Int])
+measureGuardedRhs opp (GuardedRhs _ [stmt] _) = measure' go
   where
     go =
       within GuardDeclaration $ do
-        operatorSectionR Pattern "|" $ write "|"
+        opp Pattern "|" $ write "|"
         pretty stmt
-measureGuardedRhs (GuardedRhs _ _ _) = do
+measureGuardedRhs _ GuardedRhs {} =
     return Nothing
+
+measureRhs :: (LayoutContext -> ByteString -> Printer () -> Printer ()) -> Rhs NodeInfo -> Printer (Maybe [Int])
+measureRhs opp (GuardedRhss _ grhss) =
+    (\c -> case c of [] -> Nothing; xs -> Just xs) . concat . catMaybes <$> traverse (measureGuardedRhs opp) grhss
+measureRhs _ UnGuardedRhs {} = return Nothing
+
+measureAltRhs :: (LayoutContext -> ByteString -> Printer () -> Printer ()) -> Alt NodeInfo -> Printer (Maybe [Int])
+measureAltRhs opp (Alt _ pat rhs _) = do
+    mPatL <- measure' $ pretty pat
+    mRhsL <- measureRhs opp rhs
+    pure $ case (mPatL, mRhsL) of
+      (Nothing, Nothing) -> Nothing
+      (Just ps, Just rs) -> Just [p + r | p <- ps, r <- rs]
+      (Just ps, Nothing) -> Just ps
+      (Nothing, Just rs) -> Just rs
+
+measureAllAltRhs :: (LayoutContext -> ByteString -> Printer () -> Printer ())
+                 -> [Alt NodeInfo]
+                 -> Printer ([Maybe [Int]])
+measureAllAltRhs opp alts = do
+    (patsM, rhsM) <- unzip <$> mapM go alts
+    pure [ comb ps rs
+         | ps <- patsM
+         , rs <- rhsM
+         ]
+  where
+    go (Alt _ pat rhs _) = do
+        mPatL <- measure' $ pretty pat
+        mRhsL <- measureRhs opp rhs
+        pure $ (mPatL, mRhsL)
+    comb Nothing Nothing = Nothing
+    comb (Just ps) (Just rs) = Just $ (+) <$> ps <*> rs
+    comb (Just ps) Nothing = Just ps
+    comb Nothing (Just rs) = Just rs
 
 measurePragma :: ModulePragma NodeInfo -> Printer (Maybe [Int])
 measurePragma p = (fmap . fmap . fmap $ (\x -> x - 4)) $ measure' go
@@ -534,9 +571,37 @@ withComputedTabStop' :: ([Maybe [Int]] -> Maybe [[Int]])
                      -> Printer b
                      -> Printer b
 withComputedTabStop' coallesce name predicate fn xs p = do
+    tabmss <- traverse fn xs
+    withPreComputedTabStop' coallesce name predicate tabmss p
+
+withPreComputedTabStop :: TabStop
+                            -> (AlignConfig -> Bool)
+                            -> [Maybe [Int]]
+                            -> Printer b
+                            -> Printer b
+withPreComputedTabStop = withPreComputedTabStop' sequence
+
+withPreComputedTabStopEager :: TabStop
+                            -> (AlignConfig -> Bool)
+                            -> [Maybe [Int]]
+                            -> Printer b
+                            -> Printer b
+withPreComputedTabStopEager = withPreComputedTabStop' (go . catMaybes)
+  where
+    go [] = Nothing
+    go xs = Just xs
+
+withPreComputedTabStop' :: ([Maybe [Int]] -> Maybe [[Int]])
+                        -> TabStop
+                        -> (AlignConfig -> Bool)
+                        -> [Maybe [Int]]
+                        -> Printer b
+                        -> Printer b
+withPreComputedTabStop' coallesce name predicate tabmss p = do
+    let mtabss = coallesce tabmss
     enabled <- getConfig (predicate . cfgAlign)
     (limAbs, limRel) <- getConfig (cfgAlignLimits . cfgAlign)
-    mtabss <- coallesce <$> traverse fn xs
+
     let tab = do
             tabss <- mtabss
             let tabs = concat tabss
@@ -764,6 +829,35 @@ prettyTypesig' ctx names p = do
             delta <- listVOpLen ctx "->"
             write $ BS.replicate delta 32
         p
+
+prettyGuardedRHS :: (Annotated ast1, Pretty ast1
+                    , Annotated ast2, Pretty ast2)
+                 => (LayoutConfig -> Layout)
+                 -> (LayoutContext -> ByteString -> Printer () -> Printer ())
+                 -> [ast1 NodeInfo]
+                 -> ast2 NodeInfo
+                 -> LayoutContext
+                 -> ByteString
+                 -> Printer ()
+prettyGuardedRHS cfgLayout pipeP stmts expr delimCtx delim =
+    withLayout cfgLayout flex vertical
+    where
+      flex = do
+          pipeP Pattern "|" $ write "|"
+          inter (operatorH Pattern ",") $ map pretty stmts
+          atTabStop stopGuardedUnguardedRhs
+          atTabStop stopGuardedRhs
+          operator delimCtx delim
+          pretty expr
+
+      vertical = do
+          col <- getNextColumn
+          pipeP Pattern "|" $ write "|"
+          inter (column' col $ operator Pattern ",") $ map pretty stmts
+          atTabStop stopGuardedUnguardedRhs
+          atTabStop stopGuardedRhs
+          operatorV delimCtx delim
+          pretty expr
 
 prettyForallAdv :: ( Annotated ast
                    , Pretty ast
@@ -1682,27 +1776,12 @@ instance Pretty Rhs where
     prettyPrint (GuardedRhss _ guardedrhss) =
         within GuardDeclaration $
             withIndent cfgIndentMultiIf True $ do
-              withComputedTabStopEager stopGuardedRhs cfgAlignMultiIfRhs measureGuardedRhs guardedrhss $
+              withComputedTabStopEager stopGuardedRhs cfgAlignMultiIfRhs (measureGuardedRhs operatorSectionR) guardedrhss $
                   linedOnside guardedrhss
 
 instance Pretty GuardedRhs where
     prettyPrint (GuardedRhs _ stmts expr) =
-        withLayout cfgLayoutDeclaration flex vertical
-      where
-        flex = do
-            operatorSectionR Pattern "|" $ write "|"
-            inter (operatorH Pattern ",") $ map pretty stmts
-            atTabStop stopGuardedRhs
-            operator Declaration "="
-            pretty expr
-
-        vertical = do
-            col <- getNextColumn
-            operatorSectionR Pattern "|" $ write "|"
-            inter (column' col $ operator Pattern ",") $ map pretty stmts
-            atTabStop stopGuardedRhs
-            operatorV Declaration "="
-            pretty expr
+        prettyGuardedRHS cfgLayoutDeclaration operatorSectionR stmts expr Declaration "="
 
 instance Pretty Context where
     prettyPrint (CxSingle _ asst) = do
@@ -2050,18 +2129,24 @@ instance Pretty Exp where
 
     prettyPrint (MultiIf _ guardedrhss) = do
         write "if"
-        withIndent cfgIndentMultiIf True . linedOnside $ map GuardedAltR guardedrhss
+        within GuardDeclaration $
+            withIndent cfgIndentMultiIf True $
+              withComputedTabStop stopGuardedRhs cfgAlignCase (measureGuardedRhs operatorSectionR) guardedrhss $ do
+                  linedOnside $ map GuardedAltR guardedrhss
 
     prettyPrint (Case _ expr alts) =
         within CaseDeclaration $ do
             write "case "
             pretty expr
             write " of"
+            allAltMeasures <- measureAllAltRhs operatorSection alts
             if null alts
                 then write " { }"
-                else flexibleOneline . withIndent cfgIndentCase True
-                    . withComputedTabStop stopRhs cfgAlignCase measureAlt alts $
-                    lined alts
+                else flexibleOneline $ withIndent cfgIndentCase True $
+                    withComputedTabStop stopRhs cfgAlignCase measureAlt alts $
+                        withComputedTabStopEager stopGuardedRhs cfgAlignCase (measureRhs operatorSection) (map (\(Alt _ _ r _) -> r) alts) $
+                            withPreComputedTabStopEager stopGuardedUnguardedRhs cfgAlignCase allAltMeasures $
+                                lined alts
 
     prettyPrint (Do _ stmts) = flexibleOneline $ do
         write "do"
@@ -2761,30 +2846,27 @@ newtype GuardedAlt l = GuardedAlt (GuardedRhs l)
     deriving ( Functor, Annotated )
 
 instance Pretty GuardedAltR where
-    prettyPrint (GuardedAltR (GuardedRhs _ stmts expr)) = cut $ do
-        operatorSectionR Pattern "|" $ write "|"
-        inter comma $ map pretty stmts
-        operator Expression "->"
-        pretty expr
+    prettyPrint (GuardedAltR (GuardedRhs _ stmts expr)) =
+        prettyGuardedRHS cfgLayoutDeclaration operatorSectionR stmts expr Expression "->"
 
 instance Pretty GuardedAlt where
-    prettyPrint (GuardedAlt (GuardedRhs _ stmts expr)) = cut $ do
-        operatorSection Pattern "|" $ write "|"
-        inter comma $ map pretty stmts
-        operator Expression "->"
-        pretty expr
+    prettyPrint (GuardedAlt (GuardedRhs _ stmts expr)) =
+        prettyGuardedRHS cfgLayoutDeclaration operatorSection stmts expr Expression "->"
 
 newtype GuardedAlts l = GuardedAlts (Rhs l)
     deriving ( Functor, Annotated )
 
 instance Pretty GuardedAlts where
     prettyPrint (GuardedAlts (UnGuardedRhs _ expr)) = cut $ do
+        atTabStop stopGuardedUnguardedRhs
         operator Expression "->"
         pretty expr
 
     prettyPrint (GuardedAlts (GuardedRhss _ guardedrhss)) = do
         multiIfPadding <- getConfig (cfgOptionMultiIfPadding . cfgOptions)
-        withIndent cfgIndentMultiIf multiIfPadding $ linedOnside $ map GuardedAlt guardedrhss
+        within GuardDeclaration $
+            withIndent cfgIndentMultiIf multiIfPadding $
+                linedOnside $ map GuardedAlt guardedrhss
 
 newtype CompactBinds l = CompactBinds (Binds l)
     deriving ( Functor, Annotated )
