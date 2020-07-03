@@ -27,6 +27,9 @@ module Floskell.Types
     , noNodeInfo
     , nodeSpan
     , Location(..)
+    , withDebug
+    , debugTrace
+    , debugTraceM
     ) where
 
 import           Control.Applicative
@@ -38,6 +41,7 @@ import           Control.Monad.State.Strict
 
 import qualified Data.Map.Strict              as Map
 import           Data.Semigroup               as Sem
+import           Debug.Pretty.Simple
 
 import           Floskell.Buffer              ( Buffer )
 import qualified Floskell.Buffer              as Buffer
@@ -93,6 +97,7 @@ data PrintState =
                , psWithinDeclaration :: !WithinDeclaration
                , psTypeNestLevel :: !Int
                , psPatternNestLevel :: !Int
+               , psDebug :: !Bool
                }
 
 psLine :: PrintState -> Int
@@ -106,7 +111,7 @@ psNewline = (== 0) . Buffer.column . psBuffer
 
 initialPrintState :: Config -> PrintState
 initialPrintState config =
-    PrintState Buffer.empty 0 0 Map.empty config False Anything TypeFree OtherDeclaration 0 0
+    PrintState Buffer.empty 0 0 Map.empty config False Anything TypeFree OtherDeclaration 0 0 False
 
 within :: WithinDeclaration -> Printer a -> Printer a
 within w f = do
@@ -139,6 +144,25 @@ resetPatternLevel f = do
   r <- f
   modify' $ \s -> s { psPatternNestLevel = lvl }
   pure r
+
+withDebug :: Bool -> Printer a -> Printer a
+withDebug b f = do
+  oldDebug <- gets psDebug
+  modify' $ \s -> s { psDebug = b }
+  r <- f
+  modify' $ \s -> s { psDebug = oldDebug }
+  pure r
+
+debugTrace :: String -> Printer ()
+debugTrace msg = do
+  debug <- gets psDebug
+  when debug $
+    pTraceM msg
+
+debugTraceM :: Monad m => Bool -> String -> m ()
+debugTraceM debug msg =
+  when debug $
+    pTraceM msg
 
 data CommentType = InlineComment | LineComment | PreprocessorDirective
     deriving ( Show )
