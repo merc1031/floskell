@@ -343,6 +343,7 @@ data OptionConfig =
                  , cfgOptionLetInPadding                :: !(Bool, Bool)
                  , cfgOptionListCompSpecialization      :: !Bool
                  , cfgOptionCompactVerticalList         :: !(Maybe (Bool, Bool))
+                 , cfgOptionSimpleTypeApp               :: !Bool
                  , cfgOptionDeclNoBlankLines            :: !(Set DeclarationConstruct)
                  }
     deriving ( Generic )
@@ -363,6 +364,7 @@ instance Default OptionConfig where
                        , cfgOptionLetInPadding                = (True, True)
                        , cfgOptionListCompSpecialization      = False
                        , cfgOptionCompactVerticalList         = Nothing
+                       , cfgOptionSimpleTypeApp               = False
                        , cfgOptionDeclNoBlankLines            = Set.empty
                        }
 
