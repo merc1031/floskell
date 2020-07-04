@@ -178,6 +178,7 @@ data IndentConfig =
                  , cfgIndentPatternApp :: !Indent
                  , cfgIndentPatternsig :: !Indent
                  , cfgIndentSimpleDeclaration :: !Indent
+                 , cfgIndentTypeApp :: !Indent
                  , cfgIndentTypesig :: !Indent
                  , cfgIndentWhereBinds :: !Indent
                  }
@@ -204,6 +205,7 @@ instance Default IndentConfig where
                        , cfgIndentPatternApp = IndentBy 4
                        , cfgIndentPatternsig = IndentBy 4
                        , cfgIndentSimpleDeclaration = AlignOrIndentBy 4
+                       , cfgIndentTypeApp = Align
                        , cfgIndentTypesig = IndentBy 4
                        , cfgIndentWhereBinds = IndentBy 2
                        }
@@ -264,6 +266,7 @@ data LayoutConfig =
                  , cfgLayoutPatternSynonym :: !Layout
                  , cfgLayoutConstraints :: !Layout
                  , cfgLayoutType :: !WithinLayout
+                 , cfgLayoutTypeApp :: !Layout
                  , cfgLayoutUnboxedSum :: !Layout
                  }
     deriving ( Generic )
@@ -286,6 +289,7 @@ instance Default LayoutConfig where
                        , cfgLayoutPatternSynonym = Flex
                        , cfgLayoutConstraints = Flex
                        , cfgLayoutType = def
+                       , cfgLayoutTypeApp = Flex
                        , cfgLayoutUnboxedSum = Flex
                        }
 
@@ -414,7 +418,7 @@ defaultConfig =
         ]
 
     groupWsOverrides =
-        [ (ConfigMapKey (Just "[") (Just Type) Nothing, Whitespace WsBoth WsNone False)
+        [ (ConfigMapKey (Just "[") (Just Type) Nothing, Whitespace WsBoth WsNone False Nothing)
         ]
 
 safeConfig :: Config -> Config

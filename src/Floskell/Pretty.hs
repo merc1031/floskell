@@ -1901,7 +1901,7 @@ instance Pretty Type where
             group Type "[:" ":]" $ pretty ty
 
         prettyF ty@TyApp{} = case flattenApp flatten ty of
-            ctor : args -> prettyApp ctor args
+            ctor : args -> prettyApp' cfgLayoutTypeApp cfgIndentTypeApp True ctor args
             [] -> error "impossible"
           where
             flatten (TyApp _ a b) = Just (a, b)
