@@ -1894,9 +1894,16 @@ instance Pretty Type where
         prettyF (TyParArray _ ty) =
             group Type "[:" ":]" $ pretty ty
 
-        prettyF ty@TyApp{} = case flattenApp flatten ty of
-            ctor : args -> prettyApp' cfgLayoutTypeApp cfgIndentTypeApp True ctor args
-            [] -> error "impossible"
+        prettyF tya@(TyApp _ ty ty') = do
+          simpleTypeApp <- getConfig (cfgOptionSimpleTypeApp . cfgOptions)
+          if simpleTypeApp
+            then do
+              pretty ty
+              space
+              pretty ty'
+            else case flattenApp flatten tya of
+                    ctor : args -> prettyApp' cfgLayoutTypeApp cfgIndentTypeApp True ctor args
+                    [] -> error "impossible"
           where
             flatten (TyApp _ a b) = Just (a, b)
             flatten _ = Nothing
