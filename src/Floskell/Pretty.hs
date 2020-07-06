@@ -18,7 +18,7 @@ import qualified Data.ByteString.Char8        as BS8
 import qualified Data.ByteString.Lazy         as BL
 import           Data.Char                    ( ord )
 import           Data.List                    ( groupBy, sortBy, sortOn )
-import           Data.Maybe                   ( catMaybes, fromMaybe )
+import           Data.Maybe                   ( catMaybes, fromMaybe, isNothing )
 import qualified Data.Set                     as Set
 
 import qualified Floskell.Buffer              as Buffer
@@ -867,6 +867,10 @@ prettyGuardedRHS cfgLayout pipeP stmts expr delimCtx delim =
           atTabStop stopGuardedUnguardedRhs
           atTabStop stopGuardedRhs
           operatorV delimCtx delim
+          altPadding <- getConfig (cfgOptionAltPadding . cfgOptions)
+          when altPadding $ do
+              m <- measure $ pretty expr
+              when (isNothing m) newline
           pretty expr
 
 prettyForallAdv :: ( Annotated ast
@@ -2887,6 +2891,10 @@ instance Pretty GuardedAlts where
     prettyPrint (GuardedAlts (UnGuardedRhs _ expr)) = cut $ do
         atTabStop stopGuardedUnguardedRhs
         operator Expression "->"
+        altPadding <- getConfig (cfgOptionAltPadding . cfgOptions)
+        when altPadding $ do
+            m <- measure $ pretty expr
+            when (isNothing m) newline
         pretty expr
 
     prettyPrint (GuardedAlts (GuardedRhss _ guardedrhss)) = do
