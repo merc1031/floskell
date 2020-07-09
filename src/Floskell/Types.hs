@@ -18,6 +18,8 @@ module Floskell.Types
     , nestTypeLevel
     , nestPatternLevel
     , resetPatternLevel
+    , nestAppLevel
+    , resetAppLevel
     , initialPrintState
     , Config(..)
     , SrcSpan(..)
@@ -97,6 +99,7 @@ data PrintState =
                , psWithinDeclaration :: !WithinDeclaration
                , psTypeNestLevel :: !Int
                , psPatternNestLevel :: !Int
+               , psAppNestLevel :: !Int
                , psDebug :: !Bool
                }
 
@@ -111,7 +114,7 @@ psNewline = (== 0) . Buffer.column . psBuffer
 
 initialPrintState :: Config -> PrintState
 initialPrintState config =
-    PrintState Buffer.empty 0 0 Map.empty config False Anything TypeFree OtherDeclaration 0 0 False
+    PrintState Buffer.empty 0 0 Map.empty config False Anything TypeFree OtherDeclaration 0 0 0 False
 
 within :: WithinDeclaration -> Printer a -> Printer a
 within w f = do
@@ -143,6 +146,22 @@ resetPatternLevel f = do
   modify' $ \s -> s { psPatternNestLevel = 0 }
   r <- f
   modify' $ \s -> s { psPatternNestLevel = lvl }
+  pure r
+
+nestAppLevel :: Printer a -> Printer a
+nestAppLevel f = do
+  lvl <- gets psAppNestLevel
+  modify' $ \s -> s { psAppNestLevel = lvl + 1 }
+  r <- f
+  modify' $ \s -> s { psAppNestLevel = lvl }
+  pure r
+
+resetAppLevel :: Printer a -> Printer a
+resetAppLevel f = do
+  lvl <- gets psAppNestLevel
+  modify' $ \s -> s { psAppNestLevel = 0 }
+  r <- f
+  modify' $ \s -> s { psAppNestLevel = lvl }
   pure r
 
 withDebug :: Bool -> Printer a -> Printer a

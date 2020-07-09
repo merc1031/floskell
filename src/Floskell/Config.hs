@@ -163,6 +163,7 @@ data IndentConfig =
                  , cfgIndentWhere :: !Int
                  , cfgIndentModuleWhere :: !(Maybe Int)
                  , cfgIndentApp :: !Indent
+                 , cfgIndentNestedApp :: !Indent
                  , cfgIndentCase :: !Indent
                  , cfgIndentClass :: !Indent
                  , cfgIndentDo :: !Indent
@@ -190,6 +191,7 @@ instance Default IndentConfig where
                        , cfgIndentWhere = 2
                        , cfgIndentModuleWhere = Nothing
                        , cfgIndentApp = IndentBy 4
+                       , cfgIndentNestedApp = IndentBy 4
                        , cfgIndentCase = IndentBy 4
                        , cfgIndentClass = IndentBy 4
                        , cfgIndentDo = IndentBy 4
@@ -250,6 +252,7 @@ simpleWithinLayout layout = WithinLayout { wlModuleLayout = layout
 
 data LayoutConfig =
     LayoutConfig { cfgLayoutApp :: !Layout
+                 , cfgLayoutNestedApp :: !Layout
                  , cfgLayoutConDecls :: !Layout
                  , cfgLayoutDeclaration :: !Layout
                  , cfgLayoutExportSpecList :: !Layout
@@ -273,6 +276,7 @@ data LayoutConfig =
 
 instance Default LayoutConfig where
     def = LayoutConfig { cfgLayoutApp = Flex
+                       , cfgLayoutNestedApp = Flex
                        , cfgLayoutConDecls = Flex
                        , cfgLayoutDeclaration = Flex
                        , cfgLayoutExportSpecList = Flex
@@ -345,6 +349,7 @@ data OptionConfig =
                  , cfgOptionCompactVerticalList         :: !(Maybe (Bool, Bool))
                  , cfgOptionSimpleTypeApp               :: !Bool
                  , cfgOptionAltPadding                  :: !Bool
+                 , cfgOptionUseNestedAppConfigs         :: !(Maybe Int)
                  , cfgOptionDeclNoBlankLines            :: !(Set DeclarationConstruct)
                  }
     deriving ( Generic )
@@ -367,6 +372,7 @@ instance Default OptionConfig where
                        , cfgOptionCompactVerticalList         = Nothing
                        , cfgOptionSimpleTypeApp               = False
                        , cfgOptionAltPadding                  = False
+                       , cfgOptionUseNestedAppConfigs         = Nothing
                        , cfgOptionDeclNoBlankLines            = Set.empty
                        }
 

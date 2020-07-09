@@ -27,6 +27,7 @@ chrisDoneCfg =
                      , cfgIndentWhere = 2
                      , cfgIndentModuleWhere = Nothing
                      , cfgIndentApp = Align
+                     , cfgIndentNestedApp = Align
                      , cfgIndentCase = IndentBy 2
                      , cfgIndentClass = IndentBy 2
                      , cfgIndentDo = Align
@@ -48,6 +49,7 @@ chrisDoneCfg =
                      }
 
     cfgLayout = LayoutConfig { cfgLayoutApp = TryOneline
+                             , cfgLayoutNestedApp = TryOneline
                              , cfgLayoutConDecls = Vertical
                              , cfgLayoutDeclaration = TryOneline
                              , cfgLayoutExportSpecList = TryOneline
@@ -111,6 +113,7 @@ chrisDoneCfg =
                               , cfgOptionCompactVerticalList          = Nothing
                               , cfgOptionSimpleTypeApp                = False
                               , cfgOptionAltPadding                   = False
+                              , cfgOptionUseNestedAppConfigs          = Nothing
                               , cfgOptionDeclNoBlankLines             = Set.empty
                               }
 
@@ -145,6 +148,7 @@ cramerCfg =
                      , cfgIndentWhere = 2
                      , cfgIndentModuleWhere = Nothing
                      , cfgIndentApp = Align
+                     , cfgIndentNestedApp = Align
                      , cfgIndentCase = IndentBy 4
                      , cfgIndentClass = IndentBy 4
                      , cfgIndentDo = IndentBy 4
@@ -166,6 +170,7 @@ cramerCfg =
                      }
 
     cfgLayout = LayoutConfig { cfgLayoutApp = TryOneline
+                             , cfgLayoutNestedApp = TryOneline
                              , cfgLayoutConDecls = TryOneline
                              , cfgLayoutDeclaration = Flex
                              , cfgLayoutExportSpecList = TryOneline
@@ -256,6 +261,7 @@ cramerCfg =
                      , cfgOptionCompactVerticalList           = Nothing
                      , cfgOptionSimpleTypeApp                 = False
                      , cfgOptionAltPadding                    = False
+                     , cfgOptionUseNestedAppConfigs           = Nothing
                      , cfgOptionDeclNoBlankLines              = Set.empty
                      }
 
@@ -290,6 +296,7 @@ gibianskyCfg =
                      , cfgIndentWhere = 2
                      , cfgIndentModuleWhere = Nothing
                      , cfgIndentApp = IndentBy 2
+                     , cfgIndentNestedApp = IndentBy 2
                      , cfgIndentCase = IndentBy 2
                      , cfgIndentClass = IndentBy 2
                      , cfgIndentDo = IndentBy 2
@@ -311,6 +318,7 @@ gibianskyCfg =
                      }
 
     cfgLayout = LayoutConfig { cfgLayoutApp = TryOneline
+                             , cfgLayoutNestedApp = TryOneline
                              , cfgLayoutConDecls = Vertical
                              , cfgLayoutDeclaration = Flex
                              , cfgLayoutExportSpecList = TryOneline
@@ -374,6 +382,7 @@ gibianskyCfg =
                               , cfgOptionCompactVerticalList            = Nothing
                               , cfgOptionSimpleTypeApp                  = False
                               , cfgOptionAltPadding                     = False
+                              , cfgOptionUseNestedAppConfigs            = Nothing
                               , cfgOptionDeclNoBlankLines               = Set.empty
                               }
 
@@ -387,6 +396,7 @@ johanTibellCfg =
                      , cfgIndentWhere = 2
                      , cfgIndentModuleWhere = Nothing
                      , cfgIndentApp = IndentBy 4
+                     , cfgIndentNestedApp = IndentBy 4
                      , cfgIndentCase = IndentBy 4
                      , cfgIndentClass = IndentBy 4
                      , cfgIndentDo = IndentBy 4
@@ -408,6 +418,7 @@ johanTibellCfg =
                      }
 
     cfgLayout = LayoutConfig { cfgLayoutApp = TryOneline
+                             , cfgLayoutNestedApp = TryOneline
                              , cfgLayoutConDecls = Vertical
                              , cfgLayoutDeclaration = TryOneline
                              , cfgLayoutExportSpecList = TryOneline
@@ -486,6 +497,7 @@ johanTibellCfg =
                               , cfgOptionCompactVerticalList            = Nothing
                               , cfgOptionSimpleTypeApp                  = False
                               , cfgOptionAltPadding                     = False
+                              , cfgOptionUseNestedAppConfigs            = Nothing
                               , cfgOptionDeclNoBlankLines               = Set.empty
                               }
 
@@ -521,6 +533,7 @@ pureCITICfg =
                      , cfgIndentWhere = 2
                      , cfgIndentModuleWhere = Just 2
                      , cfgIndentApp = IndentBy 0
+                     , cfgIndentNestedApp = Align
                      , cfgIndentCase = IndentBy 0
                      , cfgIndentClass = IndentBy 2
                      , cfgIndentDo = IndentBy 0
@@ -541,7 +554,8 @@ pureCITICfg =
                      , cfgIndentImportSpecInnerList = IndentBy (-2)
                      }
 
-    cfgLayout = LayoutConfig { cfgLayoutApp = Flex -- Vertical -- TryOneline
+    cfgLayout = LayoutConfig { cfgLayoutApp = Vertical -- Vertical -- TryOneline
+                             , cfgLayoutNestedApp = TryOneline -- Vertical -- TryOneline
                              , cfgLayoutConDecls = Vertical
                              , cfgLayoutDeclaration = Vertical
                              , cfgLayoutExportSpecList = Vertical
@@ -984,6 +998,7 @@ pureCITICfg =
                      , cfgOptionCompactVerticalList         = Just (True, True)
                      , cfgOptionSimpleTypeApp               = True
                      , cfgOptionAltPadding                  = True
+                     , cfgOptionUseNestedAppConfigs         = Just 1
                      , cfgOptionDeclNoBlankLines            = Set.empty
                      }
 

@@ -45,6 +45,7 @@ import           Floskell.Types
 import           Language.Haskell.Exts
                  hiding ( Comment, Pretty, Style, parse, prettyPrint, style )
 import qualified Language.Haskell.Exts      as Exts
+import Debug.Pretty.Simple
 
 data CodeBlock = HaskellSource Int [ByteString] | CPPDirectives [ByteString]
     deriving ( Show, Eq )
@@ -174,7 +175,7 @@ reformatBlock mode config cpp indent lines =
             let comments = map makeComment comments'
                 ast = annotateWithComments m (mergeComments comments cpp)
             in
-                case prettyPrint (pretty ast) config' of
+                case prettyPrint (pretty $ pTraceShowId ast) config' of
                     Nothing -> Left "Printer failed with mzero call."
                     Just output -> Right $ L8.lines output
         ParseFailed loc e -> Left $

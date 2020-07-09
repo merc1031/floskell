@@ -30,6 +30,7 @@ import           Floskell.Types
 
 import qualified Language.Haskell.Exts.Pretty as HSE
 import           Language.Haskell.Exts.Syntax
+import Debug.Pretty.Simple
 
 -- | Like `span`, but comparing adjacent items.
 run :: (a -> a -> Bool) -> [a] -> ([a], [a])
@@ -1720,7 +1721,7 @@ instance Pretty GadtDecl where
 instance Pretty Match where
     prettyPrint (Match _ name pats rhs mbinds) = do
         onside $ do
-            prettyApp name pats
+            prettyApp' cfgLayoutPatternApp cfgIndentPatternApp True name pats
             atTabStop stopRhs
             pretty rhs
         mapM_ prettyBinds mbinds
@@ -2083,7 +2084,17 @@ instance Pretty Exp where
         flattenInfixApp _ = Nothing
 
     prettyPrint e@App{} = case flattenApp flatten e of
-        fn : args -> prettyApp fn args
+        fn : args ->
+          nestAppLevel $ do
+              appNestLevel <- gets psAppNestLevel
+              cfgOptionUseNestedAppConfigs' <- getConfig (cfgOptionUseNestedAppConfigs . cfgOptions)
+              case cfgOptionUseNestedAppConfigs' of
+                  (Just n) | appNestLevel > n -> do
+                      -- pTraceM $ "AppN " <> show (appNestLevel, cfgOptionUseNestedAppConfigs', fn, args)
+                      prettyApp' cfgLayoutNestedApp cfgIndentNestedApp True fn args
+                  _ -> do
+                      -- pTraceM $ "App " <> show (appNestLevel, cfgOptionUseNestedAppConfigs', fn, args)
+                      prettyApp fn args
         [] -> error "impossible"
       where
         flatten (App _ fn arg) = Just (fn, arg)
@@ -2106,15 +2117,15 @@ instance Pretty Exp where
             PBangPat{} : _ -> space
             _ -> return ()
 
-    prettyPrint (Let _ binds expr@Do {}) = do
+    prettyPrint (Let _ binds expr@Do {}) = resetAppLevel $ do
       letDoSpecialization <- getConfig (cfgOptionLetDoSpecialization . cfgOptions)
       prettyLetIn Other letDoSpecialization binds expr
-    prettyPrint (Let _ binds expr@MDo {}) = do
+    prettyPrint (Let _ binds expr@MDo {}) = resetAppLevel $ do
       letDoSpecialization <- getConfig (cfgOptionLetDoSpecialization . cfgOptions)
       prettyLetIn Other letDoSpecialization binds expr
-    prettyPrint (Let _ binds expr) = prettyLetIn Other False binds expr
+    prettyPrint (Let _ binds expr) = resetAppLevel $ prettyLetIn Other False binds expr
 
-    prettyPrint (If _ expr expr' expr'') = withLayout cfgLayoutIf flex vertical
+    prettyPrint (If _ expr expr' expr'') = resetAppLevel $ withLayout cfgLayoutIf flex vertical
       where
         flex = do
             operatorH Expression "if"
@@ -2138,7 +2149,7 @@ instance Pretty Exp where
                                         operator Expression "else"
                                         prettyOnside expr'')
 
-    prettyPrint (MultiIf _ guardedrhss) = do
+    prettyPrint (MultiIf _ guardedrhss) = resetAppLevel $ do
         write "if"
         within GuardDeclaration $
             withIndent cfgIndentMultiIf True $
@@ -2146,7 +2157,7 @@ instance Pretty Exp where
                   linedOnside $ map GuardedAltR guardedrhss
 
     prettyPrint (Case _ expr alts) =
-        within CaseDeclaration $ do
+        resetAppLevel $ within CaseDeclaration $ do
             write "case "
             pretty expr
             write " of"
@@ -2159,13 +2170,13 @@ instance Pretty Exp where
                             withPreComputedTabStopEager stopGuardedUnguardedRhs cfgAlignCase allAltMeasures $
                                 lined alts
 
-    prettyPrint (Do _ stmts) = flexibleOneline $ do
+    prettyPrint (Do _ stmts) = resetAppLevel $ flexibleOneline $ do
         write "do"
         withIndent cfgIndentDo True $
             withComputedTabStopEager stopDoLeftArrow cfgAlignDoLeftArrow measureDoGenerators stmts $
                 linedOnside stmts
 
-    prettyPrint (MDo _ stmts) = flexibleOneline $ do
+    prettyPrint (MDo _ stmts) = resetAppLevel $ flexibleOneline $ do
         write "mdo"
         withIndent cfgIndentDo True $ linedOnside stmts
 
@@ -2436,7 +2447,7 @@ instance Pretty Exp where
         operator Expression ">>-"
         pretty expr'
 
-    prettyPrint (LCase _ alts) = flexibleOneline $ do
+    prettyPrint (LCase _ alts) = resetAppLevel $ flexibleOneline $ do
         write "\\case"
         if null alts
             then write " { }"

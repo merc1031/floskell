@@ -1923,6 +1923,23 @@ fn = do
        >> realIncrCounter mUserNotificationsTooManyUsersFound
 ```
 
+### FuncArgs
+
+``` haskell
+kafkaNotificationsTopicConsumer
+  :: AppConfig
+  -> ChatState
+  -> (ChatState -> T.Text -> T.Text -> IO ())
+  -> IO ()
+kafkaNotificationsTopicConsumer appCfg chatState sendMessageToChannel
+  = kafkaTopicConsumer
+  (\kc -> KafkaState kc appCfg chatState sendMessageToChannel)
+  (\act s -> runReaderT
+   (unAppM' act) s) onMessage onEvent
+  (\act -> runReaderT
+   (unAppM' act) Debug) printingLogCallback myTopic consumerGroup
+```
+
 ## Full Module
 
 ``` haskell
