@@ -321,14 +321,14 @@ listVinternal ctx sep xs = case xs of
             sepCol = itemCol - delta
         column itemCol $ do
             printComments' Before x
-            cut $ prettyPrint x
+            cut . onside $ prettyPrint x
             printComments After x
         -- `column sepCol` must not be within `column itemCol`, or the
         -- former can suppress onside for the latter.
         forM_ xs' $ \x' -> do
             column itemCol $ printComments Before x'
             column' sepCol $ operatorV ctx sep
-            column itemCol $ cut $ prettyPrint x'
+            column itemCol $ cut . onside $ prettyPrint x'
             column itemCol $ printComments After x'
 
 listH :: (Annotated ast, Pretty ast)
@@ -830,9 +830,9 @@ prettyTypesig' ctx names p = do
     atTabStop stopRecordField
     withIndentConfig cfgIndentTypesig align indentby
   where
-    align = onside . alignOnOperator ctx "::" $ p
+    align = alignOnOperator ctx "::" p
 
-    indentby i = indented i $ do
+    indentby i = indentedBy i $ do
         operator ctx "::"
         nl <- gets psNewline
         when nl $ do

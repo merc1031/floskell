@@ -35,6 +35,7 @@ module Floskell.Printers
     , column'
     , aligned
     , indented
+    , indentedBy
     , onside
     , depend
     , depend'
@@ -52,6 +53,7 @@ module Floskell.Printers
     , operatorH
     , operatorV
     , alignOnOperator
+    , alignOnOperatorV
     , withOperatorFormatting
     , withOperatorFormattingH
     , withOperatorFormattingV
@@ -230,7 +232,7 @@ withIndent fn pad p = withIndentConfig fn align indentby
         space
         aligned p
 
-    indentby i = indented i $ do
+    indentby i = indentedBy i $ do
         when pad newline
         p
 
@@ -241,7 +243,7 @@ withIndentFlex fn p = withIndentConfig fn align indentby
         space
         aligned p
 
-    indentby i = indented i $ do
+    indentby i = indentedBy i $ do
         spaceOrNewline
         p
 
@@ -255,7 +257,7 @@ withIndentAfter fn before p = withIndentConfig fn align indentby
 
     indentby i = do
         withIndentation id before
-        indented i p
+        indentedBy i p
 
 withIndentBy :: (IndentConfig -> Int) -> Bool -> Printer a -> Printer a
 withIndentBy fn = withIndent (IndentBy . fn)
@@ -318,9 +320,14 @@ aligned p = do
     col <- getNextColumn
     column col p
 
+indented :: Printer a -> Printer a
+indented p = do
+    i <- getConfig (cfgIndentOnside . cfgIndent)
+    indentedBy i p
+
 -- | Increase indentation level by n spaces for the given printer.
-indented :: Int -> Printer a -> Printer a
-indented i p = do
+indentedBy :: Int -> Printer a -> Printer a
+indentedBy i p = do
     level <- gets psIndentLevel
     column (level + i) p
 
@@ -337,10 +344,9 @@ depend kw = depend' (write kw)
 
 depend' :: Printer () -> Printer a -> Printer a
 depend' kw p = do
-    i <- getConfig (cfgIndentOnside . cfgIndent)
     kw
     space
-    indented i p
+    indented p
 
 -- | Wrap in parens.
 parens :: Printer () -> Printer ()
@@ -410,6 +416,10 @@ operatorV ctx op = withOperatorFormattingV ctx op (write op) id
 alignOnOperator :: LayoutContext -> ByteString -> Printer a -> Printer a
 alignOnOperator ctx op p =
     withOperatorFormatting ctx op (write op) (aligned . (*> p))
+
+alignOnOperatorV :: LayoutContext -> ByteString -> Printer a -> Printer a
+alignOnOperatorV ctx op p =
+    withOperatorFormattingV ctx op (write op) (aligned . (*> p))
 
 withOperatorFormatting :: LayoutContext
                        -> ByteString
